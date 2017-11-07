@@ -152,3 +152,8 @@ class SimpleTrafficLight(TrafficLight):
   
 if __name__ == '__main__':
     sim = Simulator()
+    sim.start()
+    for i in range(0,1000):
+        sim.step()
+    sim.stop()
+        
