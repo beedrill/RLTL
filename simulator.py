@@ -1,6 +1,4 @@
 import pysumo
-from tqdm import tqdm
-import random
 from time import time
 
 class Simulator():
@@ -18,15 +16,44 @@ class Simulator():
             if not additional_file == None:      
                 self.cmd.append('--additional-files', self.additional_file)
                 
-    def simulation_start(self):
+    def _simulation_start(self):
         if self.visual == False:
             pysumo.simulation_start(self.cmd)
             return
+        
+    def _simulation_end(self):
+        if self.visual == False:
+            pysumo.simulation_stop()
+            return
+        
+    def _simulation_step(self):
+        if self.visual == False:
+            pysumo.simulation_step()
+            return
 
+class TrafficLight():
+    
+    
+    def __init__(self, tlid, simulator):
+        self.id = tlid
+        self.simulator = simulator
 
-actions = ['rGrG','ryry','GrGr','yryr']
-def random_action():
-	return random.choice(actions)
+    
+    def _set_phase(self, phase):
+        self.current_phase = phase
+        if self.simulator.visual == False:
+            pysumo.tls_setstate(self.id, self.actions[phase])
+            return
+
+class SimpleTrafficLight(TrafficLight):
+    def __init__(self, tlid, simulator):
+        
+        TrafficLight(self, tlid, simulator)
+        self.actions = ['rGrG','ryry','GrGr','yryr']
+        self.current_pahse = 0 # pahse can be 0, 1, 2, 3
+    
+
+            
   
 time_start = time()
 for i in tqdm(range(500)):
