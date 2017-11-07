@@ -54,7 +54,8 @@ class Simulator():
         self._simulation_end()
         
     def print_status(self):
-        print self.veh_list()
+        #print self.veh_list
+        print 'current time:', self.time, ' total cars:', len(self.veh_list.keys())
    # def _update_vehicles(self):
    #     if self.visual == False:
    #         self.current_veh_list = pysumo.vehicle_list()
@@ -127,7 +128,7 @@ class TrafficLight():
 class SimpleTrafficLight(TrafficLight):
     def __init__(self, tlid, simulator, max_time= 30, yellow_time = 3):
         
-        TrafficLight(self, tlid, simulator)
+        TrafficLight.__init__(self, tlid, simulator)
         self.actions = ['rGrG','ryry','GrGr','yryr']
         self.current_pahse = 0 # pahse can be 0, 1, 2, 3
         self.current_phase_time = 0
@@ -140,7 +141,7 @@ class SimpleTrafficLight(TrafficLight):
             if self.current_phase_time>self.max_time:
                 self.move_to_next_phase()
         else:
-            if self.current_pahse_time > self.yellow_time:
+            if self.current_phase_time > self.yellow_time:
                 self.move_to_next_phase()
                 
             
@@ -155,5 +156,6 @@ if __name__ == '__main__':
     sim.start()
     for i in range(0,1000):
         sim.step()
+	sim.print_status()
     sim.stop()
         
