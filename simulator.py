@@ -1,4 +1,6 @@
 import pysumo
+#commend this line if you dont have pysumo and set visual = True, it should still run traci
+import traci
 from time import time
 
 class Simulator():
@@ -23,10 +25,20 @@ class Simulator():
                   '--end', str(self.end_time)]
             if not additional_file == None:      
                 self.cmd.append('--additional-files', self.additional_file)
+        else:
+            self.cmd = ['sumo-gui', 
+                  '--net-file', self.map_file, 
+                  '--route-files', self.route_file,
+                  '--end', str(self.end_time)]
+        if not additional_file == None:      
+            self.cmd.append('--additional-files', self.additional_file)
                 
     def _simulation_start(self):
         if self.visual == False:
             pysumo.simulation_start(self.cmd)
+            return
+        else:
+            traci.start(self.cmd)
             return
     
         
@@ -34,12 +46,20 @@ class Simulator():
         if self.visual == False:
             pysumo.simulation_stop()
             return
+        else:
+            traci.close()
+            return
         
     def _simulation_step(self):
         if self.visual == False:
             pysumo.simulation_step()
             self.time += 1
             return
+        else:
+            self.time += 1
+            traci.simulationStep()
+            return 
+        
     def step(self):
         self._simulation_step()
         for l in self.lane_list:
@@ -71,6 +91,8 @@ class Lane():
     def _get_vehicles(self):
         if self.simulator.visual == False:
             return pysumo.lane_onLaneVehicles(self.id)
+        else:
+            return traci.lane.getLastStepVehicleIDs(self.id)
         
     def step(self):
         vidlist = self._get_vehicles()
@@ -95,10 +117,16 @@ class Vehicle():
         if self.simulator.visual == False:
             self.speed = pysumo.vehicle_speed(self.id)
             return 
+        else:
+            self.speed = traci.vehicle.getSpeed(self.id)
+            return
         
     def _update_lane_position(self):
         if self.simulator.visual == False:
             self.lane_position = self.lane.length - pysumo.vehicle_lane_position(self.id)
+            return
+        else:
+            self.lane_position = self.lane.length - traci.vehicle.getLanePosition(self.id)
             return
     
     def step(self):
@@ -121,6 +149,10 @@ class TrafficLight():
         if self.simulator.visual == False:
             pysumo.tls_setstate(self.id, self.actions[phase])
             return
+        else:
+            traci.trafficlights.setRedYellowGreenState(self.id,self.actions[phase])
+            return
+        
     def step(self):
         print 'specify this method in subclass before use'
         pass
@@ -153,9 +185,11 @@ class SimpleTrafficLight(TrafficLight):
   
 if __name__ == '__main__':
     sim = Simulator()
+    #sim = Simulator(visual = True)
+    # use this commend if you don't have pysumo installed
     sim.start()
     for i in range(0,1000):
         sim.step()
-	sim.print_status()
+        sim.print_status()
     sim.stop()
         
