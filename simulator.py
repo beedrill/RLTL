@@ -1,4 +1,4 @@
-import pysumo
+#import pysumo
 #commend this line if you dont have pysumo and set visual = True, it should still run traci
 import traci
 from time import time
@@ -18,6 +18,9 @@ class Simulator():
         tl_list = ['0'] # temporary, in the future, get this from .net.xml file
         for tlid in tl_list:
             self.tl_list[tlid] = SimpleTrafficLight(tlid, self)
+        ###RL parameters
+       
+        ##############
         if self.visual == False:
             self.cmd = ['sumo', 
                   '--net-file', self.map_file, 
@@ -67,6 +70,9 @@ class Simulator():
         for tlid in self.tl_list:
             self.tl_list[tlid].step()
             
+    
+        
+            
     def start(self):
         self._simulation_start()
     
@@ -75,7 +81,7 @@ class Simulator():
         
     def print_status(self):
         #print self.veh_list
-        print 'current time:', self.time, ' total cars:', len(self.veh_list.keys())
+        print 'current time:', self.time, ' total cars:', len(self.veh_list.keys()), 'traffic status', self.tl_list['0'].traffic_state, 'reward:', self.tl_list['0'].reward
    # def _update_vehicles(self):
    #     if self.visual == False:
    #         self.current_veh_list = pysumo.vehicle_list()
@@ -87,6 +93,16 @@ class Lane():
         self.simulator = simulator
         self.vehicle_list = []
         self.length = length
+        self.car_number = 0
+        self.detected_car_number = 0
+        
+    def update_lane_reward(self):
+        self.lane_reward = 0
+        for vid in self.vehicle_list:
+            self.lane_reward+=(Vehicle.max_speed - self.simulator.veh_list[vid].speed)/Vehicle.max_speed
+        self.lane_reward = - self.lane_reward
+            
+        
         
     def _get_vehicles(self):
         if self.simulator.visual == False:
@@ -96,15 +112,21 @@ class Lane():
         
     def step(self):
         vidlist = self._get_vehicles()
+        self.vehicle_list = vidlist
+        self.car_number = len(vidlist)
+        self.detected_car_number = 0
         for vid in vidlist:
             if not vid in self.simulator.veh_list.keys():
                 self.simulator.veh_list[vid]= Vehicle(vid,self.simulator)
-                
+            if self.simulator.veh_list[vid].equipped == True:
+                self.detected_car_number += 1
             self.simulator.veh_list[vid].lane = self
             self.simulator.veh_list[vid].step()
+        self.update_lane_reward()
             
             
 class Vehicle():
+    max_speed = 13.9
     def __init__(self, vid, simulator, equipped = True,):
         self.id = vid
         self.simulator = simulator
@@ -167,14 +189,41 @@ class SimpleTrafficLight(TrafficLight):
         self.max_time = max_time
         self.yellow_time = yellow_time
         
+        self.traffic_state = [None for i in range(0,9)]
+        self.reward = None
+    
+    def updateRLParameters(self):
+        lane_list = ['e_0_0','n_0_0','s_0_0','w_0_0'] # temporary, in the future, get this from the .net.xml file
+        sim = self.simulator
+        self.reward = 0
+        for i in range(0,4):
+            self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number
+            temp = 252
+            for vid in sim.lane_list[lane_list[i]].vehicle_list:
+                v = sim.veh_list[vid]
+                if v.lane_position< temp and v.equipped:
+                    temp = sim.veh_list[vid].lane_position
+            self.traffic_state[i+4] = temp
+            self.reward+=sim.lane_list[lane_list[i]].lane_reward
+        self.traffic_state[8] = self.current_phase_time
+        
+        
+        
     def step(self):
         self.current_phase_time+=1
+        # make sure this phrase remain to keep track on current phase time
+        ###########################implement algorithm here:######################
         if self.current_pahse in [0,2]:
             if self.current_phase_time>self.max_time:
                 self.move_to_next_phase()
         else:
             if self.current_phase_time > self.yellow_time:
                 self.move_to_next_phase()
+                
+        ###########################implement algorithm above here##################
+       
+        self.updateRLParameters()
+         #make sure this method is called last to avoid error
                 
             
     def move_to_next_phase(self):
@@ -184,8 +233,8 @@ class SimpleTrafficLight(TrafficLight):
             
   
 if __name__ == '__main__':
-    sim = Simulator()
-    #sim = Simulator(visual = True)
+    #sim = Simulator()
+    sim = Simulator(visual = True)
     # use this commend if you don't have pysumo installed
     sim.start()
     for i in range(0,1000):
