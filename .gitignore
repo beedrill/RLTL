@@ -1,0 +1,15 @@
+# misc
+.DS_Store
+
+# production
+build
+
+# intelliJ/pyCharm
+.idea
+*.iml
+*.iws
+*.ipr
+
+# python
+*.pyc
+
