@@ -1,5 +1,6 @@
 # import pysumo
-# commend this line if you dont have pysumo and set visual = True, it should still run traci
+# comment this line if you dont have pysumo and set visual = True, it should still run traci
+# Todo: another class for another kind of traffic state formation
 import traci
 from time import time
 import numpy as np
@@ -18,12 +19,13 @@ class Simulator():
             returns:
                 observation, reward, isterminal, info
     """
-    def __init__(self, visual = False, map_file = 'map/traffic.net.xml', route_file = 'map/traffic.rou.xml', end_time = 500, additional_file = None):
+    def __init__(self, visual = False, map_file = 'map/traffic.net.xml', route_file = 'map/traffic.rou.xml', end_time = 500, additional_file = None, gui_setting_file = "map/view.settings.xml"):
         self.visual = visual
         self.map_file = map_file
         self.end_time = end_time
         self.route_file = route_file
         self.additional_file = additional_file
+        self.gui_setting_file = gui_setting_file
         self.veh_list = {}
         self.tl_list = {}
         self.time = 0
@@ -35,7 +37,7 @@ class Simulator():
         ###RL parameters
        
         ##############
-        self.action_space = ActionSpaces(len(tl_list), len(self.tl_list[0].action))
+        self.action_space = ActionSpaces(len(tl_list), 2) # action = 1 means move to next phase, otherwise means stay in current phase
 
         if self.visual == False:
             self.cmd = ['sumo', 
@@ -43,14 +45,17 @@ class Simulator():
                   '--route-files', self.route_file,
                   '--end', str(self.end_time)]
             if not additional_file == None:      
-                self.cmd.append('--additional-files', self.additional_file)
+                self.cmd+=['--additional-files', self.additional_file]
+            
         else:
             self.cmd = ['sumo-gui', 
                   '--net-file', self.map_file, 
                   '--route-files', self.route_file,
                   '--end', str(self.end_time)]
         if not additional_file == None:      
-            self.cmd.append('--additional-files', self.additional_file)
+            self.cmd+=['--additional-files', self.additional_file]
+        if not gui_setting_file == None:
+            self.cmd+=['--gui-settings-file', self.gui_setting_file]
                 
     def _simulation_start(self):
         if self.visual == False:
@@ -60,6 +65,7 @@ class Simulator():
             traci.start(self.cmd)
             return
 
+    
     def _simulation_end(self):
         if self.visual == False:
             pysumo.simulation_stop()
@@ -85,11 +91,14 @@ class Simulator():
 
         observation = []
         reward = []
-        for i in range(len(self.tl_list)):
-            tlid = self.tl_list[i]
-            self.tl_list[tlid].step(actions[i])
-            observation.append(self.tl_list[tlid].traffic_state)
+        i = 0
+        for tlid in self.tl_list:
+            tl = self.tl_list[tlid]
+            #print actions
+            tl.step(actions[i])
+            observation.append(tl.traffic_state)
             reward.append(self.tl_list[tlid].reward)
+            i += 1
 
         observation = np.array(observation)
         reward = np.array(reward)
@@ -102,6 +111,10 @@ class Simulator():
     
     def stop(self):
         self._simulation_end()
+        
+    def reset(self):
+        self.stop()
+        self.start()
         
     def print_status(self):
         #print self.veh_list
@@ -193,10 +206,10 @@ class TrafficLight():
     def _set_phase(self, phase):
         self.current_phase = phase
         if self.simulator.visual == False:
-            pysumo.tls_setstate(self.id, self.actions[phase])
+            pysumo.tls_setstate(self.id, self.signal_groups[phase])
             return
         else:
-            traci.trafficlights.setRedYellowGreenState(self.id,self.actions[phase])
+            traci.trafficlights.setRedYellowGreenState(self.id,self.signal_groups[phase])
             return
         
     def step(self):
@@ -205,27 +218,28 @@ class TrafficLight():
 
 
 class SimpleTrafficLight(TrafficLight):
-    def __init__(self, tlid, simulator, max_time= 30, yellow_time = 3):
+    def __init__(self, tlid, simulator, max_phase_time= 30, min_phase_time = 5, yellow_time = 3):
         
         TrafficLight.__init__(self, tlid, simulator)
-        self.actions = ['rGrG','ryry','GrGr','yryr']
+        self.signal_groups = ['rGrG','ryry','GrGr','yryr']
         self.current_phase = 0  # phase can be 0, 1, 2, 3
         self.current_phase_time = 0
-        self.max_time = max_time
+        self.max_time = max_phase_time
+        self.min_phase_time = min_phase_time
         self.yellow_time = yellow_time
 
         # Traffic State 1
         # (car num, .. , dist to TL, .., current phase time)
-        self.traffic_state = [None for i in range(0, 9)]
+        self.traffic_state = [None for i in range(0, 10)]
 
         # Traffic State 2
         # Lanes with car speed in its position
-        self.MAP_SPEED = False
-        self.lane_length = 252
-        self.lanes = 4
-        self.car_length = 4
-        if self.MAP_SPEED:
-            self.traffic_state = np.zeros((self.lanes, self.lane_length))
+        #self.MAP_SPEED = False
+        #self.lane_length = 252
+        #self.lanes = 4
+        #self.car_length = 4
+        #if self.MAP_SPEED:
+        #    self.traffic_state = np.zeros((self.lanes, self.lane_length))
 
         self.reward = None
     
@@ -245,26 +259,31 @@ class SimpleTrafficLight(TrafficLight):
             self.traffic_state[i+4] = temp
             self.reward += sim.lane_list[lane_list[i]].lane_reward
         self.traffic_state[8] = self.current_phase_time
+        self.traffic_state[9] = self.current_phase
 
-        # Traffic State 2
-        if self.MAP_SPEED:
-            self.traffic_state = np.zeros((self.lanes, self.lane_length))
-            for i in range(self.lanes):
-                for vid in sim.lane_list[lane_list[i]].vehicle_list:
-                    v = sim.veh_list[vid]
-                    if v.lane_position < self.lane_length and v.equipped:
-                        self.traffic_state[i, v.lane_position] = v.speed / Vehicle.max_speed
-                self.reward += sim.lane_list[lane_list[i]].lane_reward
+        # Traffic State 2 I will update this part in another inherited class, I don't want to put this in the same class since it becomes messy
+        #if self.MAP_SPEED:
+        #    self.traffic_state = np.zeros((self.lanes, self.lane_length))
+        #    for i in range(self.lanes):
+        #        for vid in sim.lane_list[lane_list[i]].vehicle_list:
+        #            v = sim.veh_list[vid]
+        #            if v.lane_position < self.lane_length and v.equipped:
+        #                self.traffic_state[i, v.lane_position] = v.speed / Vehicle.max_speed
+        #        self.reward += sim.lane_list[lane_list[i]].lane_reward
 
     def step(self, action):
         self.current_phase_time += 1
         # make sure this phrase remain to keep track on current phase time
-        if self.current_phase in [0, 2]:  # rGrG or GrGr
-            if self.current_phase_time > self.max_time:
+        
+         # rGrG or GrGr
+        if self.check_allow_change_phase():
+            if action == 1:
+            
+            
                 self.move_to_next_phase()
-            elif self.correct_action(action):
-                self.move_to_next_phase()
-        else:
+            #elif self.correct_action(action):
+            #    self.move_to_next_phase()
+        elif self.current_phase in [1,3]: 
             # yellow phase, action doesn't affect
             if self.current_phase_time > self.yellow_time:
                 self.move_to_next_phase()
@@ -275,11 +294,17 @@ class SimpleTrafficLight(TrafficLight):
         self.updateRLParameters()
         # make sure this method is called last to avoid error
 
-    def correct_action(self, action):
-        return action == (self.current_phase + 1) % len(self.actions)
+    #def correct_action(self, action):
+    #    return action == (self.current_phase + 1) % len(self.actions)
+    def check_allow_change_phase(self):
+        if self.current_phase in [0, 2]: 
+            if self.current_phase_time>self.min_phase_time:
+                print self.current_phase_time, self.min_phase_time
+                return True
+        return False
 
     def move_to_next_phase(self):
-        self.current_phase = (self.current_phase + 1) % len(self.actions)
+        self.current_phase = (self.current_phase + 1) % len(self.signal_groups)
         self._set_phase(self.current_phase)
         self.current_phase_time = 0
 
@@ -299,6 +324,7 @@ if __name__ == '__main__':
     # use this commend if you don't have pysumo installed
     sim.start()
     for i in range(0,1000):
-        sim.step()
+        action = sim.action_space.sample()
+        sim.step(action)
         sim.print_status()
     sim.stop()
