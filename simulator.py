@@ -1,4 +1,4 @@
-# import pysumo
+import pysumo
 # comment this line if you dont have pysumo and set visual = True, it should still run traci
 # Todo: another class for another kind of traffic state formation
 import traci
@@ -19,7 +19,7 @@ class Simulator():
             returns:
                 observation, reward, isterminal, info
     """
-    def __init__(self, visual = False, map_file = 'map/traffic.net.xml', route_file = 'map/traffic.rou.xml', end_time = 500, additional_file = None, gui_setting_file = "map/view.settings.xml"):
+    def __init__(self, visual = False, map_file = 'map/traffic.net.xml', route_file = 'map/traffic.rou.xml', end_time = 3600, episode_time = 1000, additional_file = None, gui_setting_file = "map/view.settings.xml"):
         self.visual = visual
         self.map_file = map_file
         self.end_time = end_time
@@ -37,6 +37,7 @@ class Simulator():
         ###RL parameters
        
         ##############
+        self.episode_time = episode_time
         self.action_space = ActionSpaces(len(tl_list), 2) # action = 1 means move to next phase, otherwise means stay in current phase
 
         if self.visual == False:
@@ -104,7 +105,7 @@ class Simulator():
         reward = np.array(reward)
         info = (self.time, len(self.veh_list.keys()))
 
-        return observation, reward, self.time == self.end_time, info
+        return observation, reward, self.time == self.episode_time, info
 
     def start(self):
         self._simulation_start()
@@ -114,6 +115,7 @@ class Simulator():
         
     def reset(self):
         self.stop()
+        self.time = 0
         self.start()
         
     def print_status(self):
@@ -299,7 +301,7 @@ class SimpleTrafficLight(TrafficLight):
     def check_allow_change_phase(self):
         if self.current_phase in [0, 2]: 
             if self.current_phase_time>self.min_phase_time:
-                print self.current_phase_time, self.min_phase_time
+                #print self.current_phase_time, self.min_phase_time
                 return True
         return False
 
@@ -319,12 +321,20 @@ class ActionSpaces:
 
   
 if __name__ == '__main__':
-    #sim = Simulator()
-    sim = Simulator(visual = True)
+    num_episode = 10
+    episode_time = 1000
+    
+    sim = Simulator(episode_time=episode_time)
+    # sim = Simulator(visual = True, episode_time=episode_time)
     # use this commend if you don't have pysumo installed
     sim.start()
-    for i in range(0,1000):
-        action = sim.action_space.sample()
-        sim.step(action)
-        sim.print_status()
+    for _ in range(num_episode):
+        # for i in range(episode_time):
+        while True:
+            action = sim.action_space.sample()
+            next_state, reward, terminal, info = sim.step(action)
+            sim.print_status()
+            if terminal:
+                sim.reset()
+                break
     sim.stop()
