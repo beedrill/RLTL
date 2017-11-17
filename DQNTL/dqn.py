@@ -69,7 +69,8 @@ class DQNAgent:
                  start_random_steps,
                  num_actions,
                  env_name,
-                 network):
+                 network,
+                 input_shape = (1,10)):
                     
         self.model = model
         self.preprocessor = preprocessor
@@ -85,7 +86,8 @@ class DQNAgent:
         self.num_actions = num_actions
         self.env_name = env_name
         self.network = network
-        
+        self.input_shape = input_shape        
+
         # store recent states for selecting action according to the current state
         self.recent_states = deque(maxlen=self.window_length) # store in float32
         self.recent_states_test = deque(maxlen=self.window_length) # store in float32
@@ -226,13 +228,21 @@ class DQNAgent:
             else:
                 states = list(self.recent_states)
                 # if not enough states, append 0
-                while len(states) < self.window_length:
-                    states.insert(0, np.zeros(states[0].shape))
-                # print 'state', states[0].shape
-                states = self.preprocessor.process_batch(states)
-                # print 'states', states.shape, np.array([states]).shape
-                q_values = self.calc_q_values_model(np.array([states])).flatten()
-                action = self.policy.select_action(q_values)
+                if not type(states[0])=='numpy.ndarray':
+                #if np.isnan(states[0]):
+                    states = [np.zeros(self.input_shape)]
+                try:
+                    while len(states) < self.window_length:
+                        states.insert(0, np.zeros(self.input_shape))
+                    # print 'state', states[0].shape
+                    states1 = self.preprocessor.process_batch(states)
+                    # print 'states', states.shape, np.array([states]).shape
+                    q_values = self.calc_q_values_model(np.array([states1])).flatten()
+                    action = self.policy.select_action(q_values)
+                except:
+                    print states
+                    print states1
+                    #print len(states)
 
         return action
         
@@ -242,7 +252,7 @@ class DQNAgent:
         mainly used for double DQN
         """
         q_values = self.calc_q_values_model(batch_state)
-        actions = np.argmax(q_values,1).flatten()
+        actions = np.argmin(q_values,1).flatten()
         return actions
 
     def update_policy(self):
@@ -471,6 +481,7 @@ class DQNAgent:
 
             while True:
                 action = self.select_action('test')
+                action = [action]
                 next_state, reward, terminal, _ = env.step(action)
                 next_state = next_state[0]
                 next_state = np.expand_dims(next_state, axis=0)

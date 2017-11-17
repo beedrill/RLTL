@@ -145,7 +145,7 @@ def main():
     parser.add_argument('--load', help='load model.')
     # parser.add_argument('--double', action='store_true', help='double DQN implementation.')
     # parser.add_argument('--duel', action='store_true', help='duel DQN implementation.')
-    # parser.add_argument('--render', action='store_true', default=False, help='render while testing')
+    parser.add_argument('--render', action='store_true', default=False, help='render while testing')
     parser.add_argument('--pysumo', action='store_true', help='use pysumo')
         
     args = parser.parse_args()
@@ -172,7 +172,7 @@ def main():
     else:
         import traci
         env = Simulator(visual=True, episode_time=episode_time)
-        test_env = Simulator(visual=True, episode_time=episode_time)
+        # test_env = Simulator(visual=True, episode_time=episode_time)
         env.start()
 
     if tl_state == 1:
@@ -276,7 +276,7 @@ def main():
                 print 'please load a model'
                 return
             agent.model.load_weights(args.load)
-            num_episodes = 1
+            num_episodes = 10
             avg_total_reward = agent.evaluate(env=env, num_episodes=num_episodes, render=args.render)
             print 'average total reward for {} episodes: {}'.format(num_episodes, avg_total_reward)
             env.stop()

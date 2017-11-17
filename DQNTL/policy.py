@@ -75,7 +75,7 @@ class GreedyPolicy(Policy):
     """
 
     def select_action(self, q_values, **kwargs):
-        return np.argmax(q_values)
+        return np.argmin(q_values)
 
 
 class GreedyEpsilonPolicy(Policy):
@@ -110,7 +110,7 @@ class GreedyEpsilonPolicy(Policy):
         """
         if np.random.uniform() > self.epsilon:
             # greedy
-            return np.argmax(q_values)
+            return np.argmin(q_values)
         else:
             # random policy
             return np.random.randint(0, self.num_actions)
@@ -162,7 +162,7 @@ class LinearDecayGreedyEpsilonPolicy(Policy):
             
         if np.random.uniform() > self.epsilon:
             # greedy
-            return np.argmax(q_values)
+            return np.argmin(q_values)
         else:
             # random policy
             return np.random.randint(0, self.num_actions)

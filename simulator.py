@@ -141,7 +141,7 @@ class Lane():
         self.lane_reward = 0
         for vid in self.vehicle_list:
             self.lane_reward+=(Vehicle.max_speed - self.simulator.veh_list[vid].speed)/Vehicle.max_speed
-        self.lane_reward = - self.lane_reward
+        #self.lane_reward = - self.lane_reward
 
     def _get_vehicles(self):
         if self.simulator.visual == False:
@@ -324,8 +324,8 @@ if __name__ == '__main__':
     num_episode = 10
     episode_time = 1000
     
-    sim = Simulator(episode_time=episode_time)
-    # sim = Simulator(visual = True, episode_time=episode_time)
+    #sim = Simulator(episode_time=episode_time)
+    sim = Simulator(visual = True, episode_time=episode_time)
     # use this commend if you don't have pysumo installed
     sim.start()
     for _ in range(num_episode):
