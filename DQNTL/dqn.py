@@ -70,7 +70,7 @@ class DQNAgent:
                  num_actions,
                  env_name,
                  network,
-                 input_shape = (1,10)):
+                 input_shape = (1,9)):
                     
         self.model = model
         self.preprocessor = preprocessor
@@ -282,7 +282,7 @@ class DQNAgent:
             target_q_values = self.target_model.predict_on_batch(batch_next_state) # return 32x6
 
             if self.network == 'DQN' or self.network == 'duelDQN':
-                target_q_values = np.max(target_q_values, 1).flatten()
+                target_q_values = np.min(target_q_values, 1).flatten()
             
             elif self.network == 'doubleDQN':
                 actions = self.select_greedy_actions(batch_next_state)

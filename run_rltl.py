@@ -156,9 +156,9 @@ def main():
     episode_time = 3000  # must be less than 3600
     num_iterations = num_episodes * episode_time
     memory_size = 100000
-    decay_steps = 10000
+    decay_steps = 100000
     target_update_freq = 3000
-    lr = 0.0001
+    lr = 0.001
     num_burn_in = 1000
     train_freq = 1
     tl_state = 1
@@ -176,7 +176,7 @@ def main():
         env.start()
 
     if tl_state == 1:
-        input_shape = (1, 10)
+        input_shape = (1, 9)
         window = 1
         preprocessor = TLStatePreprocessor()
     elif tl_state == 2:
@@ -240,7 +240,7 @@ def main():
             preprocessor=preprocessor,
             memory=memory,
             policy=policy,
-            gamma=0.99,
+            gamma=0.9,
             target_update_freq=target_update_freq,
             num_burn_in=num_burn_in,
             train_freq=train_freq,
@@ -249,7 +249,8 @@ def main():
             start_random_steps=20,
             num_actions=num_actions,
             env_name=env_name,
-            network=network)
+            network=network,
+            input_shape = input_shape)
 
         # optimizer								
         adam = Adam(lr=lr)
