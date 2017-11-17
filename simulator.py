@@ -1,4 +1,4 @@
-#import pysumo
+import pysumo
 # comment this line if you dont have pysumo and set visual = True, it should still run traci
 # Todo: another class for another kind of traffic state formation
 import traci
