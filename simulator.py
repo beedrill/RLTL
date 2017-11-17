@@ -1,4 +1,4 @@
-import pysumo
+#import pysumo
 # comment this line if you dont have pysumo and set visual = True, it should still run traci
 # Todo: another class for another kind of traffic state formation
 import traci
@@ -232,7 +232,8 @@ class SimpleTrafficLight(TrafficLight):
 
         # Traffic State 1
         # (car num, .. , dist to TL, .., current phase time)
-        self.traffic_state = [None for i in range(0, 10)]
+        self.num_traffic_state = 9
+        self.traffic_state = [None for i in range(0, self.num_traffic_state)]
 
         # Traffic State 2
         # Lanes with car speed in its position
@@ -246,7 +247,7 @@ class SimpleTrafficLight(TrafficLight):
         self.reward = None
     
     def updateRLParameters(self):
-        lane_list = ['e_0_0','n_0_0','s_0_0','w_0_0']  # temporary, in the future, get this from the .net.xml file
+        lane_list = ['e_0_0','w_0_0','n_0_0','s_0_0']  # temporary, in the future, get this from the .net.xml file
         sim = self.simulator
         self.reward = 0
 
@@ -261,7 +262,18 @@ class SimpleTrafficLight(TrafficLight):
             self.traffic_state[i+4] = temp
             self.reward += sim.lane_list[lane_list[i]].lane_reward
         self.traffic_state[8] = self.current_phase_time
-        self.traffic_state[9] = self.current_phase
+        if self.current_phase in [0,1]:
+            self.traffic_state[0]*=-1
+            self.traffic_state[1]*=-1
+            self.traffic_state[4]*=-1
+            self.traffic_state[5]*=-1
+        else:
+            self.traffic_state[2]*=-1
+            self.traffic_state[3]*=-1
+            self.traffic_state[6]*=-1
+            self.traffic_state[7]*=-1
+            self.traffic_state[8]*=-1
+        #self.traffic_state[9] = self.current_phase
 
         # Traffic State 2 I will update this part in another inherited class, I don't want to put this in the same class since it becomes messy
         #if self.MAP_SPEED:
