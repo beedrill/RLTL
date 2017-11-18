@@ -250,18 +250,20 @@ class SimpleTrafficLight(TrafficLight):
         lane_list = ['e_0_0','w_0_0','n_0_0','s_0_0']  # temporary, in the future, get this from the .net.xml file
         sim = self.simulator
         self.reward = 0
+        
+        car_normalizing_number = 5.
 
         # Traffic State 1
         for i in range(0, 4):
-            self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number
+            self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number/car_normalizing_number
             temp = 252
             for vid in sim.lane_list[lane_list[i]].vehicle_list:
                 v = sim.veh_list[vid]
                 if v.lane_position < temp and v.equipped:
                     temp = sim.veh_list[vid].lane_position
-            self.traffic_state[i+4] = temp
+            self.traffic_state[i+4] = temp/float(lane_list[i].length)
             self.reward += sim.lane_list[lane_list[i]].lane_reward
-        self.traffic_state[8] = self.current_phase_time
+        self.traffic_state[8] = self.current_phase_time/self.max_time
         if self.current_phase in [0,1]:
             self.traffic_state[0]*=-1
             self.traffic_state[1]*=-1
