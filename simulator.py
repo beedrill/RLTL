@@ -261,7 +261,7 @@ class SimpleTrafficLight(TrafficLight):
                 v = sim.veh_list[vid]
                 if v.lane_position < temp and v.equipped:
                     temp = sim.veh_list[vid].lane_position
-            self.traffic_state[i+4] = temp/float(lane_list[i].length)
+            self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
             self.reward += sim.lane_list[lane_list[i]].lane_reward
         self.traffic_state[8] = self.current_phase_time/self.max_time
         if self.current_phase in [0,1]:
