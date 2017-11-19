@@ -133,7 +133,7 @@ class Simulator():
             observation.append(tl.traffic_state)
             reward.append(self.tl_list[tlid].reward)
             #i += 1
-        return observation, reward, self.time == self.episode_time, info
+        return observation
         
         
     def print_status(self):
@@ -354,7 +354,7 @@ class ActionSpaces:
 
   
 if __name__ == '__main__':
-    num_episode = 90
+    num_episode = 100
     episode_time = 3000
     
     sim = Simulator(episode_time=episode_time)
@@ -368,7 +368,9 @@ if __name__ == '__main__':
             next_state, reward, terminal, info = sim.step(action)
             #sim.print_status()
             if terminal:
-                sim.reset()
-                sim.print_status()
+                state = sim.reset()
+                print state
+                array = np.array(state, np.float32)
+                #sim.print_status()
             #    break
     sim.stop()
