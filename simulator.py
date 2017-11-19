@@ -104,8 +104,8 @@ class Simulator():
         observation = np.array(observation)
         reward = np.array(reward)
         info = (self.time, len(self.veh_list.keys()))
-        if not type( observation[0][0]) in ['int',np.float64]:
-            print 'something wrong', observation[0][0], type(observation[0][0])
+        #if not type( observation[0][0]) in ['int',np.float64]:
+        #    print 'something wrong', observation[0][0], type(observation[0][0])
         
         return observation, reward, self.time == self.episode_time, info
 
@@ -119,6 +119,20 @@ class Simulator():
         self.stop()
         self.time = 0
         self.start()
+        observation = []
+        reward = []
+        info = (self.time, len(self.veh_list.keys()))
+        for tlid in self.tl_list:
+            tl = self.tl_list[tlid]
+            #print actions
+            #tl.step(actions[i])
+            tl.move_to_next_phase()
+            tl.updateRLParameters()
+            observation.append(tl.traffic_state)
+            reward.append(self.tl_list[tlid].reward)
+            i += 1
+        return observation, reward, self.time == self.episode_time, info
+        
         
     def print_status(self):
         #print self.veh_list
