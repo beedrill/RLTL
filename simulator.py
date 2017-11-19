@@ -130,7 +130,7 @@ class Simulator():
             tl.updateRLParameters()
             observation.append(tl.traffic_state)
             reward.append(self.tl_list[tlid].reward)
-            i += 1
+            #i += 1
         return observation, reward, self.time == self.episode_time, info
         
         
@@ -363,8 +363,9 @@ if __name__ == '__main__':
         while True:
             action = sim.action_space.sample()
             next_state, reward, terminal, info = sim.step(action)
-            sim.print_status()
+            #sim.print_status()
             if terminal:
                 sim.reset()
-                break
+                sim.print_status()
+            #    break
     sim.stop()
