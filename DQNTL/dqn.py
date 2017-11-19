@@ -100,8 +100,7 @@ class DQNAgent:
         self.episodes = 0  # number of episodes
         self.episode_steps = 0  # number of steps per episode
         # parameter
-        # TODO evaluation
-        self.evaluation_interval = 100000  # interval to run evaluation and get average reward
+        self.evaluation_interval = 5  # interval to run evaluation and get average reward, num episodes
         self.log_interval = 100  # interval of logging data
 
     def compile(self, optimizer, loss_func, metrics):
@@ -350,7 +349,7 @@ class DQNAgent:
         summary_value.tag = name
         return summary        
 
-    def fit(self, env, env_eval, num_iterations, save_interval, writer, max_episode_length=None):
+    def fit(self, env, env_eval, num_iterations, save_interval, writer, weights_file, max_episode_length=None):
         """Fit your model to the provided environment.
 
         Its a good idea to print out things like loss, average reward,
@@ -387,7 +386,7 @@ class DQNAgent:
         self.episodes = 0
         self.episode_steps = 0
 
-        test_eval_steps = 1
+        test_eval_steps = 5
 
         while self.steps < num_iterations:
             
@@ -456,18 +455,9 @@ class DQNAgent:
             # save weights
             if self.steps % save_interval == 0:
                 file_name = '{}_{}_{}_weights.hdf5'.format(self.network, self.env_name, self.steps)
-                file_path = 'weights/' + file_name
+                file_path = weights_file + file_name
                 self.model.save_weights(file_path)
                 
-            # evaluation	
-# =============================================================================
-#             if self.steps > self.num_burn_in and self.steps % self.evaluation_interval == 0:
-#                 # env_eval = gym.make(self.env_name)
-#                 avg_reward = self.evaluate(env_eval, test_eval_steps)
-#                 print 'steps: {}, average reward: {}'.format(self.steps, avg_reward)
-#                 writer.add_summary(self.log_tb_value('performance', avg_reward), self.steps)	
-#                 env_eval.close()
-# =============================================================================
                 
             # episode terminal condition
             if terminal or (max_episode_length and self.episode_steps % max_episode_length == 0):
@@ -476,6 +466,16 @@ class DQNAgent:
                 state = None
                 writer.add_summary(self.log_tb_value('episode_reward', episode_reward), self.episodes)
                 writer.add_summary(self.log_tb_value('episode_length', self.episode_steps), self.episodes)
+                
+                # evaluation
+                if self.steps > self.num_burn_in and self.episodes % self.evaluation_interval == 0:
+                    # env_eval = gym.make(self.env_name)
+                    avg_reward = self.evaluate(env, test_eval_steps)
+                    # print 'steps: {}, average reward: {}'.format(self.steps, avg_reward)
+                    writer.add_summary(self.log_tb_value('performance', avg_reward), self.steps)
+                    print 'Evalutation reward {}'.format(avg_reward)
+                    # env_eval.close()
+                
                 
             # counter update
             self.steps += 1
