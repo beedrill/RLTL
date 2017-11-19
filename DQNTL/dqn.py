@@ -228,8 +228,10 @@ class DQNAgent:
             else:
                 states = list(self.recent_states)
                 # if not enough states, append 0
-                if not type(states[0])=='numpy.ndarray':
+                if not type(states[0])==np.ndarray or np.isnan(states).any():
                 #if np.isnan(states[0]):
+                    print 'state is nan'
+                    print type(states[0])
                     states = [np.zeros(self.input_shape)]
                 try:
                     while len(states) < self.window_length:
@@ -332,6 +334,8 @@ class DQNAgent:
             next_state = next_state[0]
             next_state = np.expand_dims(next_state, axis=0)
             state = next_state
+        
+        print state
         return state
         
     def log_tb_value(self, name, value):
@@ -388,10 +392,22 @@ class DQNAgent:
             if state is None: # beginning of an episode
                 state = self.reset_environment(env)
                 self.recent_states.clear() # reset the recent states buffer
+                
+                # TODO debug
+                states = list(self.recent_states)
+                if len(states) != 0  and (not type(states[0])==np.ndarray or np.isnan(states).any()):
+                    print 'state is nan after clear'
+                    print type(states[0])
+    
                 self.episode_steps = 0
                 episode_reward = 0
                 # add states to recent states
                 self.recent_states.append(self.preprocessor.process_state_for_memory(state))
+                # TODO debug
+                states = list(self.recent_states)
+                if len(states) != 0  and (not type(states[0])==np.ndarray or np.isnan(states).any()):
+                    print 'state is nan after append from reset'
+                    print type(states[0])
 
             # select action 
             action = self.select_action()
@@ -416,6 +432,11 @@ class DQNAgent:
             
             # add states to recent states
             self.recent_states.append(self.preprocessor.process_state_for_memory(state))
+            # TODO debug
+            states = list(self.recent_states)
+            if len(states) != 0  and (not type(states[0])==np.ndarray or np.isnan(states).any()):
+                print 'state is nan after append from step'
+                print type(states[0])
 
             # update policy -- update Q network and update target network
             huber_loss, mae_metric = self.update_policy()
