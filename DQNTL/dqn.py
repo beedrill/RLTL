@@ -327,8 +327,10 @@ class DQNAgent:
             random number between 0 to start_random_steps
         """		
         
-        env.reset()
-        state = None
+        state = env.reset()
+        if not state:
+            print 'Initial State is None'
+        
         for _ in range(np.random.randint(self.start_random_steps)):
             action = env.action_space.sample() # sample random action
             next_state, _, _, _ = env.step(action)
@@ -336,7 +338,6 @@ class DQNAgent:
             next_state = np.expand_dims(next_state, axis=0)
             state = next_state
         
-        print state
         return state
         
     def log_tb_value(self, name, value):

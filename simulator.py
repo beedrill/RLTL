@@ -122,6 +122,8 @@ class Simulator():
         observation = []
         reward = []
         info = (self.time, len(self.veh_list.keys()))
+        for l in self.lane_list:
+            self.lane_list[l].update_lane_reward()
         for tlid in self.tl_list:
             tl = self.tl_list[tlid]
             #print actions
@@ -152,6 +154,7 @@ class Lane():
         self.length = length
         self.car_number = 0
         self.detected_car_number = 0
+        self.lane_reward = 0
         
     def update_lane_reward(self):
         self.lane_reward = 0

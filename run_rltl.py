@@ -262,7 +262,7 @@ def main():
         writer = tf.summary.FileWriter(logfile, sess.graph)
 
         if args.mode == 'train':
-            save_interval = num_iterations / 2  # save model every 1/3
+            save_interval = num_iterations / 3  # save model every 1/3
             # print 'start training....'
             agent.fit(env=env, env_eval=test_env, num_iterations=num_iterations, save_interval=save_interval, writer=writer)
             
