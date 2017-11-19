@@ -371,7 +371,7 @@ class DQNAgent:
         """
     
         state = None
-        self.steps = 0
+        self.steps= 0
         self.episodes = 0
         self.episode_steps = 0
 
