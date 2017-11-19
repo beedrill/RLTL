@@ -104,7 +104,9 @@ class Simulator():
         observation = np.array(observation)
         reward = np.array(reward)
         info = (self.time, len(self.veh_list.keys()))
-
+        #if not type( observation[0][0]) in ['int',np.float64]:
+        #    print 'something wrong', observation[0][0], type(observation[0][0])
+        
         return observation, reward, self.time == self.episode_time, info
 
     def start(self):
@@ -117,6 +119,22 @@ class Simulator():
         self.stop()
         self.time = 0
         self.start()
+        observation = []
+        reward = []
+        info = (self.time, len(self.veh_list.keys()))
+        for l in self.lane_list:
+            self.lane_list[l].update_lane_reward()
+        for tlid in self.tl_list:
+            tl = self.tl_list[tlid]
+            #print actions
+            #tl.step(actions[i])
+            tl.move_to_next_phase()
+            tl.updateRLParameters()
+            observation.append(tl.traffic_state)
+            reward.append(self.tl_list[tlid].reward)
+            #i += 1
+        return observation
+        
         
     def print_status(self):
         #print self.veh_list
@@ -136,6 +154,7 @@ class Lane():
         self.length = length
         self.car_number = 0
         self.detected_car_number = 0
+        self.lane_reward = 0
         
     def update_lane_reward(self):
         self.lane_reward = 0
@@ -220,7 +239,7 @@ class TrafficLight():
 
 
 class SimpleTrafficLight(TrafficLight):
-    def __init__(self, tlid, simulator, max_phase_time= 30, min_phase_time = 5, yellow_time = 3):
+    def __init__(self, tlid, simulator, max_phase_time= 30., min_phase_time = 5, yellow_time = 3):
         
         TrafficLight.__init__(self, tlid, simulator)
         self.signal_groups = ['rGrG','ryry','GrGr','yryr']
@@ -263,7 +282,7 @@ class SimpleTrafficLight(TrafficLight):
                     temp = sim.veh_list[vid].lane_position
             self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
             self.reward += sim.lane_list[lane_list[i]].lane_reward
-        self.traffic_state[8] = self.current_phase_time/self.max_time
+        self.traffic_state[8] = self.current_phase_time/float(self.max_time)
         if self.current_phase in [0,1]:
             self.traffic_state[0]*=-1
             self.traffic_state[1]*=-1
@@ -335,11 +354,11 @@ class ActionSpaces:
 
   
 if __name__ == '__main__':
-    num_episode = 10
-    episode_time = 1000
+    num_episode = 100
+    episode_time = 3000
     
-    #sim = Simulator(episode_time=episode_time)
-    sim = Simulator(visual = True, episode_time=episode_time)
+    sim = Simulator(episode_time=episode_time)
+    #sim = Simulator(visual = True, episode_time=episode_time)
     # use this commend if you don't have pysumo installed
     sim.start()
     for _ in range(num_episode):
@@ -347,8 +366,11 @@ if __name__ == '__main__':
         while True:
             action = sim.action_space.sample()
             next_state, reward, terminal, info = sim.step(action)
-            sim.print_status()
+            #sim.print_status()
             if terminal:
-                sim.reset()
-                break
+                state = sim.reset()
+                print state
+                array = np.array(state, np.float32)
+                #sim.print_status()
+            #    break
     sim.stop()

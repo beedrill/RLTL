@@ -13,3 +13,8 @@ build
 # python
 *.pyc
 
+# weights and logs
+DQN_log
+weights
+sumolib
+traci

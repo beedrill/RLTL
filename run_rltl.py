@@ -17,7 +17,7 @@ import keras.backend as K
 from DQNTL.dqn import DQNAgent
 from DQNTL.preprocessors import TLStatePreprocessor, TLMAPPreprocessor
 from DQNTL.utils import ReplayMemory
-from DQNTL.policy import GreedyEpsilonPolicy, LinearDecayGreedyEpsilonPolicy
+from DQNTL.policy import GreedyEpsilonPolicy, LinearDecayGreedyEpsilonPolicy, GreedyPolicy
 from DQNTL.objectives import mean_huber_loss
 
 from simulator import Simulator
@@ -233,7 +233,7 @@ def main():
         if args.mode == 'train':
             policy = LinearDecayGreedyEpsilonPolicy(start_value=1.0, end_value=0.05, num_steps=decay_steps, num_actions=num_actions)
         if args.mode == 'test':
-            policy = GreedyEpsilonPolicy(epsilon=0.05, num_actions=num_actions)
+            policy = GreedyPolicy()#GreedyEpsilonPolicy(epsilon=0.05, num_actions=num_actions)
         # agent
         agent =  DQNAgent(
             model=model,
@@ -260,15 +260,20 @@ def main():
         logfile_name = network + '_log/'
         logfile = get_output_folder(logfile_name, 'TL')
         writer = tf.summary.FileWriter(logfile, sess.graph)
+        # weights file
+        weights_file_name = network + '_weights/'
+        weights_file = get_output_folder(weights_file_name, 'TL')
+        os.makedirs(weights_file)
+        weights_file += '/'
 
         if args.mode == 'train':
             save_interval = num_iterations / 3  # save model every 1/3
             # print 'start training....'
-            agent.fit(env=env, env_eval=test_env, num_iterations=num_iterations, save_interval=save_interval, writer=writer)
+            agent.fit(env=env, env_eval=test_env, num_iterations=num_iterations, save_interval=save_interval, writer=writer, weights_file=weights_file)
             
             # save weights
             file_name = '{}_{}_{}_weights.hdf5'.format(network, env_name, num_iterations)
-            file_path = 'weights/' + file_name
+            file_path = weights_file + file_name
             agent.model.save_weights(file_path)
             # env.close()
             
@@ -277,6 +282,9 @@ def main():
                 print 'please load a model'
                 return
             agent.model.load_weights(args.load)
+            
+            #print model.layers[3].get_weights()
+            #print 'number of layers',len(model.layers)
             num_episodes = 10
             avg_total_reward = agent.evaluate(env=env, num_episodes=num_episodes, render=args.render)
             print 'average total reward for {} episodes: {}'.format(num_episodes, avg_total_reward)

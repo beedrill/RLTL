@@ -100,8 +100,7 @@ class DQNAgent:
         self.episodes = 0  # number of episodes
         self.episode_steps = 0  # number of steps per episode
         # parameter
-        # TODO evaluation
-        self.evaluation_interval = 1000000  # interval to run evaluation and get average reward
+        self.evaluation_interval = 5  # interval to run evaluation and get average reward, num episodes
         self.log_interval = 100  # interval of logging data
 
     def compile(self, optimizer, loss_func, metrics):
@@ -228,9 +227,12 @@ class DQNAgent:
             else:
                 states = list(self.recent_states)
                 # if not enough states, append 0
-                if not type(states[0])=='numpy.ndarray':
+                if not type(states[0])==np.ndarray or np.isnan(states).any():
                 #if np.isnan(states[0]):
+                    print 'state is nan'
+                    print type(states[0])
                     states = [np.zeros(self.input_shape)]
+
                 try:
                     while len(states) < self.window_length:
                         states.insert(0, np.zeros(self.input_shape))
@@ -242,7 +244,9 @@ class DQNAgent:
                 except:
                     print states
                     print states1
+                    #time.sleep()
                     #print len(states)
+
 
         return action
         
@@ -276,10 +280,12 @@ class DQNAgent:
         if self.steps > self.num_burn_in and self.steps % self.train_freq == 0:
             # sample a mini batch
             batch_state, batch_action, batch_reward, batch_next_state, batch_terminal = self.memory.sample(self.batch_size)
+            #print 'state', batch_state
             batch_state = self.preprocessor.process_batch(batch_state)
             batch_next_state = self.preprocessor.process_batch(batch_next_state)
             # compute target q values
             target_q_values = self.target_model.predict_on_batch(batch_next_state) # return 32x6
+            #print target_q_values
 
             if self.network == 'DQN' or self.network == 'duelDQN':
                 target_q_values = np.min(target_q_values, 1).flatten()
@@ -289,6 +295,7 @@ class DQNAgent:
                 target_q_values = target_q_values[range(self.batch_size), actions]
 
             # target discounted reward
+            #print 'batch terminal',batch_terminal
             target_reward = self.gamma*target_q_values*batch_terminal + batch_reward
             
             target = np.zeros((self.batch_size, self.num_actions))
@@ -299,6 +306,7 @@ class DQNAgent:
                 each_target[each_action] = each_reward
                 dummy_target[idx] = each_reward
                 each_mask[each_action] = 1.0
+            
 
             # update model
             loss_metric= self.model_train.train_on_batch([batch_state, np.array(target, dtype='float32'), np.array(action_mask, dtype='float32')], [dummy_target, np.array(target, dtype='float32')])
@@ -318,14 +326,17 @@ class DQNAgent:
             random number between 0 to start_random_steps
         """		
         
-        env.reset()
-        state = None
+        state = env.reset()
+        if not state:
+            print 'Initial State is None'
+        
         for _ in range(np.random.randint(self.start_random_steps)):
             action = env.action_space.sample() # sample random action
             next_state, _, _, _ = env.step(action)
             next_state = next_state[0]
             next_state = np.expand_dims(next_state, axis=0)
             state = next_state
+        
         return state
         
     def log_tb_value(self, name, value):
@@ -338,7 +349,7 @@ class DQNAgent:
         summary_value.tag = name
         return summary        
 
-    def fit(self, env, env_eval, num_iterations, save_interval, writer, max_episode_length=None):
+    def fit(self, env, env_eval, num_iterations, save_interval, writer, weights_file, max_episode_length=None):
         """Fit your model to the provided environment.
 
         Its a good idea to print out things like loss, average reward,
@@ -375,17 +386,29 @@ class DQNAgent:
         self.episodes = 0
         self.episode_steps = 0
 
-        test_eval_steps = 1
+        test_eval_steps = 5
 
         while self.steps < num_iterations:
             
             if state is None: # beginning of an episode
                 state = self.reset_environment(env)
                 self.recent_states.clear() # reset the recent states buffer
+                
+                # TODO debug
+                states = list(self.recent_states)
+                if len(states) != 0  and (not type(states[0])==np.ndarray or np.isnan(states).any()):
+                    print 'state is nan after clear'
+                    print type(states[0])
+    
                 self.episode_steps = 0
                 episode_reward = 0
                 # add states to recent states
                 self.recent_states.append(self.preprocessor.process_state_for_memory(state))
+                # TODO debug
+                states = list(self.recent_states)
+                if len(states) != 0  and (not type(states[0])==np.ndarray or np.isnan(states).any()):
+                    print 'state is nan after append from reset'
+                    print type(states[0])
 
             # select action 
             action = self.select_action()
@@ -394,7 +417,12 @@ class DQNAgent:
             next_state = next_state[0]
             next_state = np.expand_dims(next_state, axis=0)
             reward = reward[0]
-
+            #print type(next_state)
+            if type(next_state) is not np.ndarray:
+                print 'wrong'
+            elif np.isnan(next_state).any():
+                print 'some nan in state'
+            
             # add sample to replay memory
             self.memory.append(
                 self.preprocessor.process_state_for_memory(state),
@@ -407,6 +435,11 @@ class DQNAgent:
             
             # add states to recent states
             self.recent_states.append(self.preprocessor.process_state_for_memory(state))
+            # TODO debug
+            states = list(self.recent_states)
+            if len(states) != 0  and (not type(states[0])==np.ndarray or np.isnan(states).any()):
+                print 'state is nan after append from step'
+                print type(states[0])
 
             # update policy -- update Q network and update target network
             huber_loss, mae_metric = self.update_policy()
@@ -422,16 +455,9 @@ class DQNAgent:
             # save weights
             if self.steps % save_interval == 0:
                 file_name = '{}_{}_{}_weights.hdf5'.format(self.network, self.env_name, self.steps)
-                file_path = 'weights/' + file_name
+                file_path = weights_file + file_name
                 self.model.save_weights(file_path)
                 
-            # evaluation	
-            if self.steps > self.num_burn_in and self.steps % self.evaluation_interval == 0:
-                # env_eval = gym.make(self.env_name)
-                avg_reward = self.evaluate(env_eval, test_eval_steps)
-                print 'steps: {}, average reward: {}'.format(self.steps, avg_reward)
-                writer.add_summary(self.log_tb_value('performance', avg_reward), self.steps)	
-                env_eval.close()
                 
             # episode terminal condition
             if terminal or (max_episode_length and self.episode_steps % max_episode_length == 0):
@@ -440,6 +466,16 @@ class DQNAgent:
                 state = None
                 writer.add_summary(self.log_tb_value('episode_reward', episode_reward), self.episodes)
                 writer.add_summary(self.log_tb_value('episode_length', self.episode_steps), self.episodes)
+                
+                # evaluation
+                if self.steps > self.num_burn_in and self.episodes % self.evaluation_interval == 0:
+                    # env_eval = gym.make(self.env_name)
+                    avg_reward = self.evaluate(env, test_eval_steps)
+                    # print 'steps: {}, average reward: {}'.format(self.steps, avg_reward)
+                    writer.add_summary(self.log_tb_value('performance', avg_reward), self.steps)
+                    print 'Evalutation reward {}'.format(avg_reward)
+                    # env_eval.close()
+                
                 
             # counter update
             self.steps += 1
