@@ -233,6 +233,7 @@ class DQNAgent:
                     print 'state is nan'
                     print type(states[0])
                     states = [np.zeros(self.input_shape)]
+
                 try:
                     while len(states) < self.window_length:
                         states.insert(0, np.zeros(self.input_shape))
@@ -419,6 +420,8 @@ class DQNAgent:
             #print type(next_state)
             if type(next_state) is not np.ndarray:
                 print 'wrong'
+            elif np.isnan(next_state).any():
+                print 'some nan in state'
             
             # add sample to replay memory
             self.memory.append(
