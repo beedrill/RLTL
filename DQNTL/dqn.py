@@ -101,7 +101,7 @@ class DQNAgent:
         self.episode_steps = 0  # number of steps per episode
         # parameter
         # TODO evaluation
-        self.evaluation_interval = 1000000  # interval to run evaluation and get average reward
+        self.evaluation_interval = 100000  # interval to run evaluation and get average reward
         self.log_interval = 100  # interval of logging data
 
     def compile(self, optimizer, loss_func, metrics):
@@ -242,7 +242,9 @@ class DQNAgent:
                 except:
                     print states
                     print states1
+                    #time.sleep()
                     #print len(states)
+
 
         return action
         
@@ -276,10 +278,12 @@ class DQNAgent:
         if self.steps > self.num_burn_in and self.steps % self.train_freq == 0:
             # sample a mini batch
             batch_state, batch_action, batch_reward, batch_next_state, batch_terminal = self.memory.sample(self.batch_size)
+            #print 'state', batch_state
             batch_state = self.preprocessor.process_batch(batch_state)
             batch_next_state = self.preprocessor.process_batch(batch_next_state)
             # compute target q values
             target_q_values = self.target_model.predict_on_batch(batch_next_state) # return 32x6
+            #print target_q_values
 
             if self.network == 'DQN' or self.network == 'duelDQN':
                 target_q_values = np.min(target_q_values, 1).flatten()
@@ -289,6 +293,7 @@ class DQNAgent:
                 target_q_values = target_q_values[range(self.batch_size), actions]
 
             # target discounted reward
+            #print 'batch terminal',batch_terminal
             target_reward = self.gamma*target_q_values*batch_terminal + batch_reward
             
             target = np.zeros((self.batch_size, self.num_actions))
@@ -299,6 +304,7 @@ class DQNAgent:
                 each_target[each_action] = each_reward
                 dummy_target[idx] = each_reward
                 each_mask[each_action] = 1.0
+            
 
             # update model
             loss_metric= self.model_train.train_on_batch([batch_state, np.array(target, dtype='float32'), np.array(action_mask, dtype='float32')], [dummy_target, np.array(target, dtype='float32')])
@@ -394,7 +400,10 @@ class DQNAgent:
             next_state = next_state[0]
             next_state = np.expand_dims(next_state, axis=0)
             reward = reward[0]
-
+            #print type(next_state)
+            if type(next_state) is not np.ndarray:
+                print 'wrong'
+            
             # add sample to replay memory
             self.memory.append(
                 self.preprocessor.process_state_for_memory(state),
@@ -426,12 +435,14 @@ class DQNAgent:
                 self.model.save_weights(file_path)
                 
             # evaluation	
-            if self.steps > self.num_burn_in and self.steps % self.evaluation_interval == 0:
-                # env_eval = gym.make(self.env_name)
-                avg_reward = self.evaluate(env_eval, test_eval_steps)
-                print 'steps: {}, average reward: {}'.format(self.steps, avg_reward)
-                writer.add_summary(self.log_tb_value('performance', avg_reward), self.steps)	
-                env_eval.close()
+# =============================================================================
+#             if self.steps > self.num_burn_in and self.steps % self.evaluation_interval == 0:
+#                 # env_eval = gym.make(self.env_name)
+#                 avg_reward = self.evaluate(env_eval, test_eval_steps)
+#                 print 'steps: {}, average reward: {}'.format(self.steps, avg_reward)
+#                 writer.add_summary(self.log_tb_value('performance', avg_reward), self.steps)	
+#                 env_eval.close()
+# =============================================================================
                 
             # episode terminal condition
             if terminal or (max_episode_length and self.episode_steps % max_episode_length == 0):

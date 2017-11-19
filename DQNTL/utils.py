@@ -234,6 +234,7 @@ class ReplayMemory:
 
     def sample(self, batch_size, indexes=None):
         """ sample a batch from replay memory """
+        #print self.buffer[0][0]
         batch_state = []
         batch_action = []
         batch_reward = []
@@ -241,11 +242,13 @@ class ReplayMemory:
         batch_terminal = []
         
         for i in range(batch_size):
-            idx = self.start_index
+            idx = np.random.randint(self.window_length - 1, self.size)#self.start_index
+            #print idx
+            #print self.size
             # deal with discontinuity at the start index
-            while self.start_index <= idx < self.start_index + self.window_length - 1:
+            while self.start_index <= idx < (self.start_index + self.window_length - 1):
                 idx = np.random.randint(self.window_length - 1, self.size)
-
+            
             state_frame = np.zeros((self.window_length,) + self.state_input)
             next_state_frame = np.zeros((self.window_length,) + self.state_input)
             for j in range(self.window_length-1, -1, -1):
@@ -267,6 +270,7 @@ class ReplayMemory:
             batch_terminal.append(self.buffer[idx][4])
         
         terminal_batch = 1.0 - (np.array(batch_terminal) + 0.0)  # True to be 0 and False to be 1
+        #print batch_state
 
         return np.array(batch_state), np.array(batch_action), np.array(batch_reward), np.array(batch_next_state), terminal_batch
           

@@ -104,7 +104,9 @@ class Simulator():
         observation = np.array(observation)
         reward = np.array(reward)
         info = (self.time, len(self.veh_list.keys()))
-
+        if not type( observation[0][0]) in ['int',np.float64]:
+            print 'something wrong', observation[0][0], type(observation[0][0])
+        
         return observation, reward, self.time == self.episode_time, info
 
     def start(self):
@@ -220,7 +222,7 @@ class TrafficLight():
 
 
 class SimpleTrafficLight(TrafficLight):
-    def __init__(self, tlid, simulator, max_phase_time= 30, min_phase_time = 5, yellow_time = 3):
+    def __init__(self, tlid, simulator, max_phase_time= 30., min_phase_time = 5, yellow_time = 3):
         
         TrafficLight.__init__(self, tlid, simulator)
         self.signal_groups = ['rGrG','ryry','GrGr','yryr']
@@ -263,7 +265,7 @@ class SimpleTrafficLight(TrafficLight):
                     temp = sim.veh_list[vid].lane_position
             self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
             self.reward += sim.lane_list[lane_list[i]].lane_reward
-        self.traffic_state[8] = self.current_phase_time/self.max_time
+        self.traffic_state[8] = self.current_phase_time/float(self.max_time)
         if self.current_phase in [0,1]:
             self.traffic_state[0]*=-1
             self.traffic_state[1]*=-1
@@ -335,11 +337,11 @@ class ActionSpaces:
 
   
 if __name__ == '__main__':
-    num_episode = 10
-    episode_time = 1000
+    num_episode = 90
+    episode_time = 3000
     
-    #sim = Simulator(episode_time=episode_time)
-    sim = Simulator(visual = True, episode_time=episode_time)
+    sim = Simulator(episode_time=episode_time)
+    #sim = Simulator(visual = True, episode_time=episode_time)
     # use this commend if you don't have pysumo installed
     sim.start()
     for _ in range(num_episode):
