@@ -15,6 +15,6 @@ build
 
 # weights and logs
 DQN_log
-weights
+DQN_weights
 sumolib
 traci

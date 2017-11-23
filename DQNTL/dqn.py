@@ -473,7 +473,7 @@ class DQNAgent:
                     avg_reward = self.evaluate(env, test_eval_steps)
                     # print 'steps: {}, average reward: {}'.format(self.steps, avg_reward)
                     writer.add_summary(self.log_tb_value('performance', avg_reward), self.steps)
-                    print 'Evalutation reward {}'.format(avg_reward)
+                    print 'Evaluation reward {}'.format(avg_reward)
                     # env_eval.close()
                 
                 

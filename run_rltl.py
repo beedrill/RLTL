@@ -42,13 +42,13 @@ def dense_layers(permute): # TODO number of layers and units
     with tf.name_scope('flat'):
         flat = Flatten()(permute)
     with tf.name_scope('dense1'):
-        dense1 = Dense(1024, activation='relu')(flat)
-    # with tf.name_scope('dense2'):
-    #     dense2 = Dense(512, activation='relu')(dense1)
+        dense1 = Dense(512, activation='relu')(flat)
+    with tf.name_scope('dense2'):
+         dense2 = Dense(512, activation='relu')(dense1)
     # with tf.name_scope('dense3'):
     #     dense3 = Dense(512, activation='relu')(dense2)
 
-    return dense1
+    return dense2
 
 
 def create_model(window, input_shape, num_actions,
@@ -152,14 +152,14 @@ def main():
 
     ## PARAMS ##
 
-    num_episodes = 100
+    num_episodes = 150
     episode_time = 3000  # must be less than 3600
     num_iterations = num_episodes * episode_time
     memory_size = 100000
     decay_steps = 100000
     target_update_freq = 3000
-    lr = 0.001
-    num_burn_in = 1000
+    lr = 0.0001
+    num_burn_in = 10000
     train_freq = 1
     tl_state = 1
 
@@ -256,17 +256,18 @@ def main():
         adam = Adam(lr=lr)
         # compile
         agent.compile(optimizer=adam, loss_func=mean_huber_loss, metrics=['mae'])
-        # log file
-        logfile_name = network + '_log/'
-        logfile = get_output_folder(logfile_name, 'TL')
-        writer = tf.summary.FileWriter(logfile, sess.graph)
-        # weights file
-        weights_file_name = network + '_weights/'
-        weights_file = get_output_folder(weights_file_name, 'TL')
-        os.makedirs(weights_file)
-        weights_file += '/'
 
         if args.mode == 'train':
+            # log file
+            logfile_name = network + '_log/'
+            logfile = get_output_folder(logfile_name, 'TL')
+            writer = tf.summary.FileWriter(logfile, sess.graph)
+            # weights file
+            weights_file_name = network + '_weights/'
+            weights_file = get_output_folder(weights_file_name, 'TL')
+            os.makedirs(weights_file)
+            weights_file += '/'
+            
             save_interval = num_iterations / 3  # save model every 1/3
             # print 'start training....'
             agent.fit(env=env, env_eval=test_env, num_iterations=num_iterations, save_interval=save_interval, writer=writer, weights_file=weights_file)
