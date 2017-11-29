@@ -242,8 +242,14 @@ class Vehicle():
         else:
             self.lane_position = self.lane.length - traci.vehicle.getLanePosition(self.id)
             return
+        
+    def _update_appearance(self):
+        if self.simulator.visual:
+            if self.equipped:
+                traci.vehicle.setColor(self.id,(255,0,0,0))
     
     def step(self):
+        self._update_appearance()
         self._update_speed()
         self._update_lane_position()
         self.latest_time = self.simulator.time
@@ -390,7 +396,7 @@ if __name__ == '__main__':
     num_episode = 100
     episode_time = 3000
     
-    sim = Simulator(episode_time=episode_time)
+    sim = Simulator(episode_time=episode_time,visual=True,penetration_rate = 0.5)
     #sim = Simulator(visual = True, episode_time=episode_time)
     # use this commend if you don't have pysumo installed
     sim.start()

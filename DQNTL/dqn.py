@@ -470,9 +470,12 @@ class DQNAgent:
                 # evaluation
                 if self.steps > self.num_burn_in and self.episodes % self.evaluation_interval == 0:
                     # env_eval = gym.make(self.env_name)
-                    avg_reward = self.evaluate(env, test_eval_steps)
+                    avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = self.evaluate(env, test_eval_steps)
                     # print 'steps: {}, average reward: {}'.format(self.steps, avg_reward)
                     writer.add_summary(self.log_tb_value('performance', avg_reward), self.steps)
+                    writer.add_summary(self.log_tb_value('waiting time', overall_waiting_time), self.steps)
+                    writer.add_summary(self.log_tb_value('DSRC-equipped waiting time', equipped_waiting_time), self.steps)
+                    writer.add_summary(self.log_tb_value('DSRC-unequipped waiting time', unequipped_waiting_time), self.steps)
                     print 'Evaluation reward {}'.format(avg_reward)
                     # env_eval.close()
                 
@@ -483,10 +486,12 @@ class DQNAgent:
         
         # evaluate performance
         # env_eval = gym.make(self.env_name)
-        avg_reward = self.evaluate(env_eval, test_eval_steps)
+        avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = self.evaluate(env_eval, test_eval_steps)
         print 'steps: {}, average reward: {}'.format(self.steps, avg_reward)
-        writer.add_summary(self.log_tb_value('performance', avg_reward), self.steps)	
-        # env_eval.close()
+        writer.add_summary(self.log_tb_value('performance', avg_reward), self.steps)
+        writer.add_summary(self.log_tb_value('waiting time', overall_waiting_time), self.steps)
+        writer.add_summary(self.log_tb_value('DSRC-equipped waiting time', equipped_waiting_time), self.steps)
+        writer.add_summary(self.log_tb_value('DSRC-unequipped waiting time', unequipped_waiting_time), self.steps)      # env_eval.close()
         env.stop()
 
     def evaluate(self, env, num_episodes, render=False, max_episode_length=None):
@@ -535,7 +540,8 @@ class DQNAgent:
                 test_episode_steps += 1
                 
         avg_total_reward = float(cumulative_reward)/num_episodes
-        return avg_total_reward 		       	
+        overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = env.get_result()
+        return avg_total_reward, overall_waiting_time,equipped_waiting_time,unequipped_waiting_time		       	
 
     def hard_target_model_updates(self):
         """

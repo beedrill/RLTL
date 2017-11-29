@@ -43,12 +43,12 @@ def dense_layers(permute): # TODO number of layers and units
         flat = Flatten()(permute)
     with tf.name_scope('dense1'):
         dense1 = Dense(512, activation='relu')(flat)
-    with tf.name_scope('dense2'):
-         dense2 = Dense(512, activation='relu')(dense1)
+    #with tf.name_scope('dense2'):
+    #     dense2 = Dense(512, activation='relu')(dense1)
     # with tf.name_scope('dense3'):
     #     dense3 = Dense(512, activation='relu')(dense2)
 
-    return dense2
+    return dense1
 
 
 def create_model(window, input_shape, num_actions,
