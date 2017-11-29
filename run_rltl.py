@@ -171,7 +171,7 @@ def main():
         # test_env.start() # TODO
     else:
         import traci
-        env = Simulator(visual=True, episode_time=episode_time)
+        env = Simulator(visual=True, episode_time=episode_time, penetration_rate = 1)
         # test_env = Simulator(visual=True, episode_time=episode_time)
         env.start()
 
@@ -268,7 +268,7 @@ def main():
             os.makedirs(weights_file)
             weights_file += '/'
             
-            save_interval = num_iterations / 3  # save model every 1/3
+            save_interval = num_iterations / 10  # save model every 1/3
             # print 'start training....'
             agent.fit(env=env, env_eval=test_env, num_iterations=num_iterations, save_interval=save_interval, writer=writer, weights_file=weights_file)
             

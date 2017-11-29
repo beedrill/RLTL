@@ -127,6 +127,7 @@ class Simulator():
         reward = []
         info = (self.time, len(self.veh_list.keys()))
         for l in self.lane_list:
+            self.lane_list[l].reset()
             self.lane_list[l].update_lane_reward()
         for tlid in self.tl_id_list:
             tl = self.tl_list[tlid]
@@ -214,6 +215,12 @@ class Lane():
             self.simulator.veh_list[vid].lane = self
             self.simulator.veh_list[vid].step()
         self.update_lane_reward()
+        
+    def reset(self):
+        self.vehicle_list = []
+        self.car_number = 0
+        self.detected_car_number = 0
+        self.lane_reward = 0
             
             
 class Vehicle():
