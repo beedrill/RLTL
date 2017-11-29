@@ -17,7 +17,7 @@ import keras.backend as K
 from DQNTL.dqn import DQNAgent
 from DQNTL.preprocessors import TLStatePreprocessor, TLMAPPreprocessor
 from DQNTL.utils import ReplayMemory
-from DQNTL.policy import GreedyEpsilonPolicy, LinearDecayGreedyEpsilonPolicy, GreedyPolicy
+from DQNTL.policy import GreedyEpsilonPolicy, LinearDecayGreedyEpsilonPolicy
 from DQNTL.objectives import mean_huber_loss
 
 from simulator import Simulator
@@ -230,10 +230,10 @@ def main():
         # memory = ReplayMemory(max_size=1000000, window_length=4, state_input=(84, 84))
         memory = ReplayMemory(max_size=memory_size, window_length=window, state_input=input_shape)
         # policy
-        if args.mode == 'train':
-            policy = LinearDecayGreedyEpsilonPolicy(start_value=1.0, end_value=0.05, num_steps=decay_steps, num_actions=num_actions)
-        if args.mode == 'test':
-            policy = GreedyPolicy()#GreedyEpsilonPolicy(epsilon=0.05, num_actions=num_actions)
+        #if args.mode == 'train':
+        policy = LinearDecayGreedyEpsilonPolicy(start_value=1.0, end_value=0.05, num_steps=decay_steps, num_actions=num_actions)
+        #if args.mode == 'test':
+            #policy = GreedyPolicy()#GreedyEpsilonPolicy(epsilon=0.05, num_actions=num_actions)
         # agent
         agent =  DQNAgent(
             model=model,

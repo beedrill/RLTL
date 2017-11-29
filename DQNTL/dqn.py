@@ -7,7 +7,7 @@ import tensorflow as tf
 from keras.models import Model
 from collections import deque
 import numpy as np
-from DQNTL.policy import UniformRandomPolicy, GreedyEpsilonPolicy
+from DQNTL.policy import UniformRandomPolicy, GreedyEpsilonPolicy, GreedyPolicy
 from keras.layers import Input, Lambda, Dense, concatenate
 import keras.backend as K
 # import gym
@@ -93,7 +93,7 @@ class DQNAgent:
         self.recent_states_test = deque(maxlen=self.window_length) # store in float32
         
         self.uniform_policy = UniformRandomPolicy(self.num_actions)
-        self.test_policy = GreedyEpsilonPolicy(epsilon=0.05, num_actions=self.num_actions)
+        self.test_policy = GreedyPolicy()
         
         # counters
         self.steps = 0  # number of total steps
