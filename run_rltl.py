@@ -147,12 +147,15 @@ def main():
     # parser.add_argument('--duel', action='store_true', help='duel DQN implementation.')
     parser.add_argument('--render', action='store_true', default=False, help='render while testing')
     parser.add_argument('--pysumo', action='store_true', help='use pysumo')
-        
+    parser.add_argument('--dir_name', default = 'TL',help = 'directory name')
+    parser.add_argument('--no_counter', action = 'store_true', default = False, help = 'no counter in saving files, note it might overwrite previous results')
+    parser.add_argument('--penetration_rate', type = float, default = 1., help = 'specify penetration rate')
+    
     args = parser.parse_args()
 
     ## PARAMS ##
 
-    num_episodes = 150
+    num_episodes = 100
     episode_time = 3000  # must be less than 3600
     num_iterations = num_episodes * episode_time
     memory_size = 100000
@@ -165,13 +168,13 @@ def main():
 
     if args.pysumo:
         import pysumo
-        env = Simulator(episode_time=episode_time)
-        test_env = Simulator(episode_time=episode_time)
+        env = Simulator(episode_time=episode_time,penetration_rate = args.penetration_rate)
+        #test_env = Simulator(episode_time=episode_time, penetration_rate = args.penetration_rate)
         env.start()
         # test_env.start() # TODO
     else:
         import traci
-        env = Simulator(visual=True, episode_time=episode_time, penetration_rate = 1)
+        env = Simulator(visual=True, episode_time=episode_time, penetration_rate = args.penetration_rate)
         # test_env = Simulator(visual=True, episode_time=episode_time)
         env.start()
 
@@ -232,7 +235,7 @@ def main():
         # policy
         #if args.mode == 'train':
         policy = LinearDecayGreedyEpsilonPolicy(start_value=1.0, end_value=0.05, num_steps=decay_steps, num_actions=num_actions)
-        #if args.mode == 'test':
+        #if args.mode == 'test':ne 233, i
             #policy = GreedyPolicy()#GreedyEpsilonPolicy(epsilon=0.05, num_actions=num_actions)
         # agent
         agent =  DQNAgent(
@@ -256,21 +259,33 @@ def main():
         adam = Adam(lr=lr)
         # compile
         agent.compile(optimizer=adam, loss_func=mean_huber_loss, metrics=['mae'])
+        
+        if args.load:
+            print 'loaded model'
+            agent.model.load_weights(args.load)
 
         if args.mode == 'train':
             # log file
             logfile_name = network + '_log/'
-            logfile = get_output_folder(logfile_name, 'TL')
+            if args.no_counter == False:
+                logfile = get_output_folder(logfile_name, args.dir_name)
+            else:
+                logfile = logfile_name+args.dir_name
             writer = tf.summary.FileWriter(logfile, sess.graph)
             # weights file
             weights_file_name = network + '_weights/'
-            weights_file = get_output_folder(weights_file_name, 'TL')
+            if args.no_counter == False:
+                weights_file = get_output_folder(weights_file_name, args.dir_name)
+            else:
+                weights_file = weights_file_name+args.dir_name
+            
             os.makedirs(weights_file)
             weights_file += '/'
             
-            save_interval = num_iterations / 10  # save model every 1/3
+            save_interval = num_iterations / 30  # save model every 1/3
+            #save_interval = 1
             # print 'start training....'
-            agent.fit(env=env, env_eval=test_env, num_iterations=num_iterations, save_interval=save_interval, writer=writer, weights_file=weights_file)
+            agent.fit(env=env, num_iterations=num_iterations, save_interval=save_interval, writer=writer, weights_file=weights_file)
             
             # save weights
             file_name = '{}_{}_{}_weights.hdf5'.format(network, env_name, num_iterations)

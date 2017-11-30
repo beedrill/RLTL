@@ -285,7 +285,7 @@ class TrafficLight():
 
 
 class SimpleTrafficLight(TrafficLight):
-    def __init__(self, tlid, simulator, max_phase_time= 30., min_phase_time = 5, yellow_time = 3):
+    def __init__(self, tlid, simulator, max_phase_time= 40., min_phase_time = 5, yellow_time = 3):
         
         TrafficLight.__init__(self, tlid, simulator)
         self.signal_groups = ['rGrG','ryry','GrGr','yryr']
@@ -324,6 +324,8 @@ class SimpleTrafficLight(TrafficLight):
             temp = 252
             for vid in sim.lane_list[lane_list[i]].vehicle_list:
                 v = sim.veh_list[vid]
+                if v.equipped == False:
+                    continue
                 if v.lane_position < temp and v.equipped:
                     temp = sim.veh_list[vid].lane_position
             self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
@@ -358,11 +360,10 @@ class SimpleTrafficLight(TrafficLight):
         
          # rGrG or GrGr
         if self.check_allow_change_phase():
-            if action == 1:
-            
-            
+            if action == 1 or self.current_phase_time > self.max_time:
+           #if action == 1:
                 self.move_to_next_phase()
-            #elif self.correct_action(action):
+                #elif self.correct_action(action):
             #    self.move_to_next_phase()
         elif self.current_phase in [1,3]: 
             # yellow phase, action doesn't affect

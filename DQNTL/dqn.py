@@ -86,7 +86,8 @@ class DQNAgent:
         self.num_actions = num_actions
         self.env_name = env_name
         self.network = network
-        self.input_shape = input_shape        
+        self.input_shape = input_shape 
+        
 
         # store recent states for selecting action according to the current state
         self.recent_states = deque(maxlen=self.window_length) # store in float32
@@ -97,11 +98,13 @@ class DQNAgent:
         
         # counters
         self.steps = 0  # number of total steps
-        self.episodes = 0  # number of episodes
-        self.episode_steps = 0  # number of steps per episode
+        self.episodes = 0  # index of current episodes
+        self.episode_steps = 0  # current step in an episode
+        #self.episode_time = episode_time # total steps per episode
         # parameter
         self.evaluation_interval = 5  # interval to run evaluation and get average reward, num episodes
         self.log_interval = 100  # interval of logging data
+        
 
     def compile(self, optimizer, loss_func, metrics):
         """Setup all of the TF graph variables/ops.
@@ -349,7 +352,7 @@ class DQNAgent:
         summary_value.tag = name
         return summary        
 
-    def fit(self, env, env_eval, num_iterations, save_interval, writer, weights_file, max_episode_length=None):
+    def fit(self, env, num_iterations, save_interval, writer, weights_file, max_episode_length=None):
         """Fit your model to the provided environment.
 
         Its a good idea to print out things like loss, average reward,
@@ -368,8 +371,6 @@ class DQNAgent:
           This is pysumo environment. You should wrap the
           environment using the wrap_atari_env function in the
           utils.py
-        env_eval: Simulator()
-          This is test env
         num_iterations: int
           How many samples/updates to perform.
          save_interval: int
@@ -387,7 +388,7 @@ class DQNAgent:
         self.episode_steps = 0
 
         test_eval_steps = 5
-
+        min_reward = float('inf')
         while self.steps < num_iterations:
             
             if state is None: # beginning of an episode
@@ -477,6 +478,11 @@ class DQNAgent:
                     writer.add_summary(self.log_tb_value('DSRC-equipped waiting time', equipped_waiting_time), self.steps)
                     writer.add_summary(self.log_tb_value('DSRC-unequipped waiting time', unequipped_waiting_time), self.steps)
                     print 'Evaluation reward {}'.format(avg_reward)
+                    if avg_reward < min_reward:
+                        min_reward = avg_reward
+                        file_name = '{}_{}_bestweights.hdf5'.format(self.network, self.env_name)
+                        file_path = weights_file + file_name
+                        self.model.save_weights(file_path)
                     # env_eval.close()
                 
                 
@@ -492,6 +498,7 @@ class DQNAgent:
         writer.add_summary(self.log_tb_value('waiting time', overall_waiting_time), self.steps)
         writer.add_summary(self.log_tb_value('DSRC-equipped waiting time', equipped_waiting_time), self.steps)
         writer.add_summary(self.log_tb_value('DSRC-unequipped waiting time', unequipped_waiting_time), self.steps)      # env_eval.close()
+        
         env.stop()
 
     def evaluate(self, env, num_episodes, render=False, max_episode_length=None):
@@ -519,7 +526,7 @@ class DQNAgent:
                 env.render()
             # add states to recent states for test
             self.recent_states_test.append(self.preprocessor.process_state_for_memory(state))
-
+            episode_reward = 0.
             while True:
                 action = self.select_action('test')
                 action = [action]
@@ -531,13 +538,15 @@ class DQNAgent:
                     env.render()
                 state = next_state
                 self.recent_states_test.append(self.preprocessor.process_state_for_memory(state))
-                cumulative_reward += reward
+                episode_reward += reward
 
                 # episode terminal condition
                 if terminal or (max_episode_length and test_episode_steps % max_episode_length == 0):
                         break
 
                 test_episode_steps += 1
+                
+            cumulative_reward += episode_reward/test_episode_steps
                 
         avg_total_reward = float(cumulative_reward)/num_episodes
         overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = env.get_result()
