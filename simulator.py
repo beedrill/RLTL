@@ -32,6 +32,7 @@ class Simulator():
         lane_list = ['0_e_0', '0_n_0','0_s_0','0_w_0','e_0_0','n_0_0','s_0_0','w_0_0'] # temporary, in the future, get this from the .net.xml file
         self.lane_list = {l:Lane(l,self) for l in lane_list}
         tl_list = ['0'] # temporary, in the future, get this from .net.xml file
+        self.tl_id_list = tl_list
         for tlid in tl_list:
             self.tl_list[tlid] = SimpleTrafficLight(tlid, self)
         ###RL parameters
@@ -93,7 +94,7 @@ class Simulator():
         observation = []
         reward = []
         i = 0
-        for tlid in self.tl_list:
+        for tlid in self.tl_id_list:
             tl = self.tl_list[tlid]
             #print actions
             tl.step(actions[i])
@@ -117,6 +118,7 @@ class Simulator():
         
     def reset(self):
         self.stop()
+        self.veh_list = {}
         self.time = 0
         self.start()
         observation = []
@@ -124,7 +126,7 @@ class Simulator():
         info = (self.time, len(self.veh_list.keys()))
         for l in self.lane_list:
             self.lane_list[l].update_lane_reward()
-        for tlid in self.tl_list:
+        for tlid in self.tl_id_list:
             tl = self.tl_list[tlid]
             #print actions
             #tl.step(actions[i])
@@ -135,7 +137,33 @@ class Simulator():
             #i += 1
         return observation
         
+    def get_result(self):
+        total_waiting = 0.
+        equipped_waiting = 0.
+        non_equipped_waiting = 0.
         
+        n_total = 0.
+        n_equipped = 0.
+        n_non_equipped = 0.
+        
+        for vid in self.veh_list:
+            v = self.veh_list[vid]
+            
+            n_total += 1
+            total_waiting += v.waiting_time
+            if v.equipped:
+                n_equipped +=1
+                equipped_waiting += v.waiting_time
+            else:
+                n_non_equipped += 1
+                non_equipped_waiting += v.waiting_time
+                
+        
+        self.average_waiting_time = total_waiting/n_total if n_total>0 else 0
+        self.equipped_average_waiting_time = equipped_waiting/n_equipped if n_equipped>0 else 0
+        self.nonequipped_average_waiting_time = non_equipped_waiting/n_non_equipped if n_non_equipped>0 else 0
+        #print n_equipped, equipped_waiting
+        return self.average_waiting_time,self.equipped_average_waiting_time, self.nonequipped_average_waiting_time   
     def print_status(self):
         #print self.veh_list
         print 'current time:', self.time, ' total cars:', len(self.veh_list.keys()), 'traffic status', self.tl_list['0'].traffic_state, 'reward:', self.tl_list['0'].reward
