@@ -4,6 +4,7 @@ import pysumo
 import traci
 from time import time
 import numpy as np
+import random
 
 
 class Simulator():
@@ -19,7 +20,7 @@ class Simulator():
             returns:
                 observation, reward, isterminal, info
     """
-    def __init__(self, visual = False, map_file = 'map/traffic.net.xml', route_file = 'map/traffic.rou.xml', end_time = 3600, episode_time = 1000, additional_file = None, gui_setting_file = "map/view.settings.xml"):
+    def __init__(self, visual = False, map_file = 'map/traffic.net.xml', route_file = 'map/traffic.rou.xml', end_time = 3600, episode_time = 1000, additional_file = None, gui_setting_file = "map/view.settings.xml",penetration_rate = 1):
         self.visual = visual
         self.map_file = map_file
         self.end_time = end_time
@@ -30,7 +31,7 @@ class Simulator():
         self.tl_list = {}
         self.time = 0
         lane_list = ['0_e_0', '0_n_0','0_s_0','0_w_0','e_0_0','n_0_0','s_0_0','w_0_0'] # temporary, in the future, get this from the .net.xml file
-        self.lane_list = {l:Lane(l,self) for l in lane_list}
+        self.lane_list = {l:Lane(l,self,penetration_rate=penetration_rate) for l in lane_list}
         tl_list = ['0'] # temporary, in the future, get this from .net.xml file
         self.tl_id_list = tl_list
         for tlid in tl_list:
@@ -40,6 +41,7 @@ class Simulator():
         ##############
         self.episode_time = episode_time
         self.action_space = ActionSpaces(len(tl_list), 2) # action = 1 means move to next phase, otherwise means stay in current phase
+        self.penetration_rate = penetration_rate
 
         if self.visual == False:
             self.cmd = ['sumo', 
@@ -167,6 +169,8 @@ class Simulator():
     def print_status(self):
         #print self.veh_list
         print 'current time:', self.time, ' total cars:', len(self.veh_list.keys()), 'traffic status', self.tl_list['0'].traffic_state, 'reward:', self.tl_list['0'].reward
+                                                             
+
 
    # def _update_vehicles(self):
    #     if self.visual == False:
@@ -175,7 +179,7 @@ class Simulator():
 
 
 class Lane():
-    def __init__(self,lane_id,simulator,length = 251):
+    def __init__(self,lane_id,simulator,length = 251,penetration_rate = 1):
         self.id = lane_id
         self.simulator = simulator
         self.vehicle_list = []
@@ -183,6 +187,7 @@ class Lane():
         self.car_number = 0
         self.detected_car_number = 0
         self.lane_reward = 0
+        self.penetration_rate = penetration_rate
         
     def update_lane_reward(self):
         self.lane_reward = 0
@@ -203,7 +208,7 @@ class Lane():
         self.detected_car_number = 0
         for vid in vidlist:
             if not vid in self.simulator.veh_list.keys():
-                self.simulator.veh_list[vid]= Vehicle(vid,self.simulator)
+                self.simulator.veh_list[vid]= Vehicle(vid,self.simulator, equipped = random.random()<self.penetration_rate)
             if self.simulator.veh_list[vid].equipped == True:
                 self.detected_car_number += 1
             self.simulator.veh_list[vid].lane = self
