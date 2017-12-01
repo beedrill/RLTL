@@ -492,7 +492,7 @@ class DQNAgent:
         
         # evaluate performance
         # env_eval = gym.make(self.env_name)
-        avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = self.evaluate(env_eval, test_eval_steps)
+        avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = self.evaluate(env, test_eval_steps)
         print 'steps: {}, average reward: {}'.format(self.steps, avg_reward)
         writer.add_summary(self.log_tb_value('performance', avg_reward), self.steps)
         writer.add_summary(self.log_tb_value('waiting time', overall_waiting_time), self.steps)
