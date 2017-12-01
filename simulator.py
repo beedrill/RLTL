@@ -29,6 +29,7 @@ class Simulator():
         self.gui_setting_file = gui_setting_file
         self.veh_list = {}
         self.tl_list = {}
+        self.is_started = False
         self.time = 0
         lane_list = ['0_e_0', '0_n_0','0_s_0','0_w_0','e_0_0','n_0_0','s_0_0','w_0_0'] # temporary, in the future, get this from the .net.xml file
         self.lane_list = {l:Lane(l,self,penetration_rate=penetration_rate) for l in lane_list}
@@ -114,15 +115,23 @@ class Simulator():
 
     def start(self):
         self._simulation_start()
+        self.is_started = True
     
     def stop(self):
+        if self.is_started == False:
+            print 'not started yet'
+            return
         self._simulation_end()
+        self.is_started = False
         
     def reset(self):
-        self.stop()
+        if self.is_started == True:
+            self.stop()
+            
         self.veh_list = {}
         self.time = 0
         self.start()
+        
         observation = []
         reward = []
         info = (self.time, len(self.veh_list.keys()))

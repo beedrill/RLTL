@@ -170,13 +170,13 @@ def main():
         import pysumo
         env = Simulator(episode_time=episode_time,penetration_rate = args.penetration_rate)
         #test_env = Simulator(episode_time=episode_time, penetration_rate = args.penetration_rate)
-        env.start()
+        #env.start()
         # test_env.start() # TODO
     else:
         import traci
         env = Simulator(visual=True, episode_time=episode_time, penetration_rate = args.penetration_rate)
         # test_env = Simulator(visual=True, episode_time=episode_time)
-        env.start()
+        #env.start()
 
     if tl_state == 1:
         input_shape = (1, 9)
