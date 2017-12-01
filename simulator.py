@@ -20,7 +20,14 @@ class Simulator():
             returns:
                 observation, reward, isterminal, info
     """
-    def __init__(self, visual = False, map_file = 'map/traffic.net.xml', route_file = 'map/traffic.rou.xml', end_time = 3600, episode_time = 1000, additional_file = None, gui_setting_file = "map/view.settings.xml",penetration_rate = 1):
+    def __init__(self, visual = False, 
+                 map_file = 'map/traffic.net.xml', 
+                 route_file = 'map/traffic.rou.xml', 
+                 end_time = 3600, episode_time = 1000, 
+                 additional_file = None, 
+                 gui_setting_file = "map/view.settings.xml",
+                 penetration_rate = 1,
+                 num_traffic_state = 10):
         self.visual = visual
         self.map_file = map_file
         self.end_time = end_time
@@ -35,8 +42,9 @@ class Simulator():
         self.lane_list = {l:Lane(l,self,penetration_rate=penetration_rate) for l in lane_list}
         tl_list = ['0'] # temporary, in the future, get this from .net.xml file
         self.tl_id_list = tl_list
+        self.num_traffic_state = num_traffic_state
         for tlid in tl_list:
-            self.tl_list[tlid] = SimpleTrafficLight(tlid, self)
+            self.tl_list[tlid] = SimpleTrafficLight(tlid, self, num_traffic_state = self.num_traffic_state)
         ###RL parameters
        
         ##############
@@ -294,7 +302,7 @@ class TrafficLight():
 
 
 class SimpleTrafficLight(TrafficLight):
-    def __init__(self, tlid, simulator, max_phase_time= 40., min_phase_time = 5, yellow_time = 3):
+    def __init__(self, tlid, simulator, max_phase_time= 40., min_phase_time = 5, yellow_time = 3, num_traffic_state = 10):
         
         TrafficLight.__init__(self, tlid, simulator)
         self.signal_groups = ['rGrG','ryry','GrGr','yryr']
@@ -306,7 +314,7 @@ class SimpleTrafficLight(TrafficLight):
 
         # Traffic State 1
         # (car num, .. , dist to TL, .., current phase time)
-        self.num_traffic_state = 9
+        self.num_traffic_state = num_traffic_state
         self.traffic_state = [None for i in range(0, self.num_traffic_state)]
 
         # Traffic State 2
@@ -351,7 +359,7 @@ class SimpleTrafficLight(TrafficLight):
             self.traffic_state[6]*=-1
             self.traffic_state[7]*=-1
             self.traffic_state[8]*=-1
-        #self.traffic_state[9] = self.current_phase
+            self.traffic_state[9] = 1 if self.current_phase in [1,3] else -1
 
         # Traffic State 2 I will update this part in another inherited class, I don't want to put this in the same class since it becomes messy
         #if self.MAP_SPEED:

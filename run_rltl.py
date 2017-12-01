@@ -155,7 +155,7 @@ def main():
 
     ## PARAMS ##
 
-    num_episodes = 100
+    num_episodes = 150
     episode_time = 3000  # must be less than 3600
     num_iterations = num_episodes * episode_time
     memory_size = 100000
@@ -179,7 +179,7 @@ def main():
         #env.start()
 
     if tl_state == 1:
-        input_shape = (1, 9)
+        input_shape = (1, env.num_traffic_state)
         window = 1
         preprocessor = TLStatePreprocessor()
     elif tl_state == 2:
