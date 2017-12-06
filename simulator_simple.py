@@ -27,7 +27,7 @@ class Simulator():
                  additional_file = None, 
                  gui_setting_file = "map/view.settings.xml",
                  penetration_rate = 1,
-                 num_traffic_state = 10):
+                 num_traffic_state = 5):
         self.visual = visual
         self.map_file = map_file
         self.end_time = end_time
@@ -337,7 +337,7 @@ class SimpleTrafficLight(TrafficLight):
 
         # Traffic State 1
         for i in range(0, 4):
-            self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number/car_normalizing_number
+            #self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number/car_normalizing_number
             temp = 252
             for vid in sim.lane_list[lane_list[i]].vehicle_list:
                 v = sim.veh_list[vid]
@@ -345,21 +345,21 @@ class SimpleTrafficLight(TrafficLight):
                     continue
                 if v.lane_position < temp and v.equipped:
                     temp = sim.veh_list[vid].lane_position
-            self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
+            self.traffic_state[i] = temp/float(sim.lane_list[lane_list[i]].length)
             self.reward += sim.lane_list[lane_list[i]].lane_reward
-        self.traffic_state[8] = self.current_phase_time/float(self.max_time)
+        #self.traffic_state[8] = self.current_phase_time/float(self.max_time)
         if self.current_phase in [0,1]:
             self.traffic_state[0]*=-1
             self.traffic_state[1]*=-1
-            self.traffic_state[4]*=-1
-            self.traffic_state[5]*=-1
+            #self.traffic_state[4]*=-1
+            #self.traffic_state[5]*=-1
         else:
             self.traffic_state[2]*=-1
             self.traffic_state[3]*=-1
-            self.traffic_state[6]*=-1
-            self.traffic_state[7]*=-1
-            self.traffic_state[8]*=-1
-        self.traffic_state[9] = 1 if self.current_phase in [1,3] else -1
+            #self.traffic_state[6]*=-1
+            #self.traffic_state[7]*=-1
+            #self.traffic_state[8]*=-1
+        self.traffic_state[4] = 1 if self.current_phase in [1,3] else -1
 
         # Traffic State 2 I will update this part in another inherited class, I don't want to put this in the same class since it becomes messy
         #if self.MAP_SPEED:
