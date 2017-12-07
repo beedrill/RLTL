@@ -109,6 +109,7 @@ class Simulator():
         observation = []
         reward = []
         i = 0
+        terminate = False
         for tlid in self.tl_list:
             tl = self.tl_list[tlid]
             #print actions
@@ -116,14 +117,21 @@ class Simulator():
             observation.append(tl.traffic_state)
             reward.append(self.tl_list[tlid].reward)
             i += 1
+            if tl.congested:
+                terminate = True
 
         observation = np.array(observation)
         reward = np.array(reward)
+        if terminate:
+            reward = 1000
         info = (self.time, len(self.veh_list.keys()))
+        
+        if terminate == False:
+            terminate = (self.time == self.episode_time)
         #if not type( observation[0][0]) in ['int',np.float64]:
         #    print 'something wrong', observation[0][0], type(observation[0][0])
         #print observation
-        return observation, reward, self.time == self.episode_time, info
+        return observation, reward, terminate, info
     def step_(self):
         self._simulation_step()
         for l in self.lane_list:
@@ -211,6 +219,7 @@ class Lane():
         self.detected_car_number = 0
         self.lane_reward = 0
         self.penetration_rate = penetration_rate
+        self.congested = False
         
     def update_lane_reward(self):
         self.lane_reward = 0
@@ -237,6 +246,15 @@ class Lane():
             self.simulator.veh_list[vid].lane = self
             self.simulator.veh_list[vid].step()
         self.update_lane_reward()
+        self.check_congestion()
+        
+    def check_congestion(self):
+        if self.car_number>25:
+            self.congested = True
+            return True
+        else:
+            self.congested = False
+            return False
             
             
 class Vehicle():
@@ -315,6 +333,7 @@ class SimpleTrafficLight(TrafficLight):
         # (car num, .. , dist to TL, .., current phase time)
         self.num_traffic_state = 9
         self.traffic_state = [None for i in range(0, self.num_traffic_state)]
+        self.congested = False
 
         # Traffic State 2
         # Lanes with car speed in its position
@@ -339,6 +358,10 @@ class SimpleTrafficLight(TrafficLight):
             self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number/car_normalizing_number
             temp = 252
             for vid in sim.lane_list[lane_list[i]].vehicle_list:
+                if sim.lane_list[lane_list[i]].congested:
+                    self.congested = True
+                else:
+                    self.congested = False
                 v = sim.veh_list[vid]
                 if v.lane_position < temp and v.equipped:
                     temp = sim.veh_list[vid].lane_position
@@ -485,6 +508,6 @@ if __name__ == '__main__':
         #agent = DSRCATLAgent()
         #agent.fit(sim)
         
-    sim = Simulator(penetration_rate = 0)
+    sim = Simulator(visual=True,penetration_rate = 0)
     agent = NormalAgent()
     agent.fit(sim)

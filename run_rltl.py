@@ -20,8 +20,8 @@ from DQNTL.utils import ReplayMemory
 from DQNTL.policy import GreedyEpsilonPolicy, LinearDecayGreedyEpsilonPolicy
 from DQNTL.objectives import mean_huber_loss
 
-#from simulator import Simulator
-from simulator_simple import Simulator
+from simulator import Simulator
+#from simulator_simple import Simulator
 # import gym
 # from gym import wrappers
 
