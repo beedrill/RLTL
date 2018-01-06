@@ -313,6 +313,7 @@ class DQNAgent:
 
             # update model
             loss_metric= self.model_train.train_on_batch([batch_state, np.array(target, dtype='float32'), np.array(action_mask, dtype='float32')], [dummy_target, np.array(target, dtype='float32')])
+            
             huber_loss = loss_metric[0]
             mae_metric = loss_metric[3]
             
@@ -350,7 +351,8 @@ class DQNAgent:
         summary_value = summary.value.add()
         summary_value.simple_value = value
         summary_value.tag = name
-        return summary        
+        return summary   
+     
 
     def fit(self, env, num_iterations, save_interval, writer, weights_file, max_episode_length=None):
         """Fit your model to the provided environment.
@@ -443,8 +445,9 @@ class DQNAgent:
                 print type(states[0])
 
             # update policy -- update Q network and update target network
+            #with tf.device('/gpu:0'):
             huber_loss, mae_metric = self.update_policy()
-            
+            #huber_loss, mae_metric = None,None
             episode_reward += reward
             # print 'steps: {} loss: {}'.format(self.steps, huber_loss)
             # log info

@@ -46,8 +46,8 @@ def dense_layers(permute): # TODO number of layers and units
         dense1 = Dense(512, activation='relu')(flat)
     #with tf.name_scope('dense2'):
     #     dense2 = Dense(512, activation='relu')(dense1)
-    # with tf.name_scope('dense3'):
-    #     dense3 = Dense(512, activation='relu')(dense2)
+   # with tf.name_scope('dense3'):
+   #      dense3 = Dense(512, activation='relu')(dense2)
 
     return dense1
 
@@ -219,7 +219,8 @@ def main():
     # print 'num_actions', num_actions
     
     # memory grows as it requires
-    config = tf.ConfigProto()
+    config = tf.ConfigProto(allow_soft_placement=True)
+    #config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
     sess = tf.Session(config=config)
     K.set_session(sess)
@@ -255,7 +256,7 @@ def main():
             env_name=env_name,
             network=network,
             input_shape = input_shape)
-
+    
         # optimizer								
         adam = Adam(lr=lr)
         # compile
@@ -264,7 +265,7 @@ def main():
         if args.load:
             print 'loaded model'
             agent.model.load_weights(args.load)
-
+    
         if args.mode == 'train':
             # log file
             logfile_name = network + '_log/'
