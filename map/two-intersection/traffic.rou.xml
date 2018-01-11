@@ -1,0 +1,11 @@
+<routes>
+<vType decel="4.5" accel="2" id="Car" maxSpeed="100.0" sigma="0.5" length="5.0"/>
+<route id="route_ns0" edges="n_0 0_s"/><route id="route_sn0" edges="s_0 0_n"/>
+<route id="route_ns1" edges="n_1 1_s"/><route id="route_sn1" edges="s_1 1_n"/>
+<route id="route_ew" edges="e_1 1_0 0_w"/><route id="route_we" edges="w_0 0_1 1_e"/>
+<flow depart="1" id="flow_n_s1" route="route_ns1" type="Car" begin="0" end="3600" probability="0.02"/>
+<flow depart="1" id="flow_s_n1" route="route_sn1" type="Car" begin="0" end="3600" probability="0.02"/>
+<flow depart="1" id="flow_n_s0" route="route_ns0" type="Car" begin="0" end="3600" probability="0.02"/>
+<flow depart="1" id="flow_s_n0" route="route_sn0" type="Car" begin="0" end="3600" probability="0.02"/>
+<flow depart="1" id="flow_e_w" route="route_ew" type="Car" begin="0" end="3600" probability="0.1"/>
+<flow depart="1" id="flow_w_e" route="route_we" type="Car" begin="0" end="3600" probability="0.1"/></routes>
