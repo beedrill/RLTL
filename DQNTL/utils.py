@@ -232,6 +232,54 @@ class ReplayMemory:
         s = Sample(state, action, reward, next_state, terminal)
         self.buffer[(self.start_index + self.size - 1) % self.max_size] = s.sample
 
+    def subsample(self, batch_size, stride=None, indexes=None):
+        """ subsample a batch from replay memory """
+
+        batch_state = []
+        batch_action = []
+        batch_reward = []
+        batch_next_state = []
+        batch_terminal = []
+
+        # total size of buffer size requird to get subsample of size window length with subsample rate
+        sample_size = (self.window_length - 1) * (stride + 1) + 1
+
+        buffer_start = sample_size - 1
+        # TODO: when buffer is full, be able to wrap around
+        for i in range(batch_size):
+            idx = np.random.randint(buffer_start, self.size)
+
+            # deal with discontinuity at the start index
+            while self.start_index <= idx < (self.start_index + sample_size - 1):
+                idx = np.random.randint(buffer_start, self.size)
+
+            state_frame = np.zeros((self.window_length,) + self.state_input)
+            next_state_frame = np.zeros((self.window_length,) + self.state_input)
+            buffer_index = sample_size - 1
+            for j in range(self.window_length - 1, -1, -1):
+                # if among window frames, there is a terminal, append zero
+                if j != self.window_length - 1 and self.buffer[idx - sample_size + buffer_index + 1][2]:
+                    while j >= 0:
+                        state_frame[j, :, :] = np.zeros(self.state_input)
+                        next_state_frame[j, :, :] = np.zeros(self.state_input)
+                        j -= 1
+                    break
+                else:
+                    state_frame[j, :, :] = self.buffer[idx - sample_size + buffer_index + 1][0]
+                    next_state_frame[j, :, :] = self.buffer[idx - sample_size + buffer_index + 1][3]
+
+            batch_state.append(state_frame)
+            batch_next_state.append(next_state_frame)
+            batch_action.append(self.buffer[idx][1])
+            batch_reward.append(self.buffer[idx][2])
+            batch_terminal.append(self.buffer[idx][4])
+
+        terminal_batch = 1.0 - (np.array(batch_terminal) + 0.0)  # True to be 0 and False to be 1
+        # print batch_state
+
+        return np.array(batch_state), np.array(batch_action), np.array(batch_reward), np.array(
+            batch_next_state), terminal_batch
+
     def sample(self, batch_size, indexes=None):
         """ sample a batch from replay memory """
         #print self.buffer[0][0]
