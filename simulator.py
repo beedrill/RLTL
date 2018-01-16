@@ -1,4 +1,4 @@
-#import pysumo
+import pysumo
 # comment this line if you dont have pysumo and set visual = True, it should still run traci
 # Todo: another class for another kind of traffic state formation
 import traci
@@ -164,14 +164,19 @@ class Simulator():
             
         self.veh_list = {}
         self.time = 0
-        self.start()
+        self.start()            
+        #print state
+        #print len(state)
         
         observation = []
         reward = []
         info = (self.time, len(self.veh_list.keys()))
+        
         for l in self.lane_list:
             self.lane_list[l].reset()
             self.lane_list[l].update_lane_reward()
+            
+        #print 'haha', self.tl_id_list
         for tlid in self.tl_id_list:
             tl = self.tl_list[tlid]
             #print actions
@@ -181,7 +186,8 @@ class Simulator():
             observation.append(tl.traffic_state)
             reward.append(self.tl_list[tlid].reward)
             #i += 1
-        return observation
+        #print 'haha', observation
+        return np.array(observation)
         
     def get_result(self):
         total_waiting = 0.

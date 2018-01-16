@@ -11,14 +11,363 @@ from DQNTL.policy import UniformRandomPolicy, GreedyEpsilonPolicy, GreedyPolicy
 from keras.layers import Input, Lambda, Dense, concatenate
 import keras.backend as K
 # import gym
-import time
+# import time
 # from PIL import Image
 
+class DQNAgents:
+    def __init__(self,
+                 agents,
+                 #models,
+                 preprocessor,
+                 memory,
+                 #policy,
+                 #gamma,
+                 #target_update_freq,
+                 num_burn_in,
+                 #train_freq,
+                 batch_size,
+                 #window_length,
+                 start_random_steps,
+                 #num_actions,
+                 env_name,
+                 network,
+                 input_shape = (1,9)):
+                    
+        #self.models = models
+        self.preprocessor = preprocessor
+        self.memory = memory
+        #self.policy = policy
+        #self.gamma = gamma
+        #self.target_update_freq = target_update_freq
+        self.num_burn_in = num_burn_in
+        #self.train_freq = train_freq
+        self.batch_size = batch_size
+        #self.window_length = window_length
+        self.start_random_steps = start_random_steps
+        #self.num_actions = num_actions
+        self.env_name = env_name
+        self.network = network
+        self.input_shape = input_shape 
+        
 
+        # store recent states for selecting action according to the current state
+        #self.recent_states = deque(maxlen=self.window_length) # store in float32
+        #self.recent_states_test = deque(maxlen=self.window_length) # store in float32
+        
+        #self.uniform_policy = UniformRandomPolicy(self.num_actions)
+        #self.test_policy = GreedyPolicy()
+        
+        # counters
+        self.steps = 0  # number of total steps
+        self.episodes = 0  # index of current episodes
+        self.episode_steps = 0  # current step in an episode
+        #self.episode_time = episode_time # total steps per episode
+        # parameter= []
+        self.evaluation_interval = 5  # interval to run evaluation and get average reward, num episodes
+        self.log_interval = 100  # interval of logging data
+        #self.name_list = name_list
+        self.agents = agents
+        #for name in name_list:
+            #self.agents.append(DQNAgent(...))
+
+    def reset_environment(self, env):
+        """ 
+            reset environment 
+            initialize the game and run random actions specified by 
+            random number between 0 to start_random_steps
+        """		
+        
+        state = env.reset()
+        state = np.expand_dims(state, axis=1)
+        #if not state:
+            #print 'Initial State is None'
+        
+        for _ in range(np.random.randint(self.start_random_steps)):
+            action = env.action_space.sample() # sample random action
+            next_state, _, _, _ = env.step(action)
+            #next_state = next_state[0]
+            # this is required because it is 1 x traffic state size
+            next_state = np.expand_dims(next_state, axis=1)
+            #print next_state.shape
+            state = next_state
+        
+        return state
+
+    def log_tb_value(self, name, value):
+        """ 
+            helper function for logging files
+        """
+        summary = tf.Summary()
+        summary_value = summary.value.add()
+        summary_value.simple_value = value
+        summary_value.tag = name
+        return summary
+
+    def fit(self, env, num_iterations, save_interval, writer, weights_file, max_episode_length=None):
+        """Fit your model to the provided environment.
+
+        Its a good idea to print out things like loss, average reward,
+        Q-values, etc to see if your agent is actually improving.
+
+        You should probably also periodically save your network
+        weights and any other useful info.
+
+        This is where you should sample actions from your network,
+        collect experience samples and add them to your replay memory,
+        and update your network parameters.
+
+        Parameters
+        ----------
+        env: Simulator()
+          This is pysumo environment. You should wrap the
+          environment using the wrap_atari_env function in the
+          utils.py
+        num_iterations: int
+          How many samples/updates to perform.
+         save_interval: int
+            how frequently to save the model
+         writer: tf.summary.FileWriter
+            writer for logging data
+        max_episode_length: int
+          How long a single episode should last before the agent
+          resets. Can help exploration.
+        """
+    
+        state = None
+        self.steps= 0
+        self.episodes = 0
+        self.episode_steps = 0
+
+        test_eval_steps = 5
+        min_reward = float('inf')
+        while self.steps < num_iterations:
+            
+            if state is None: # beginning of an episode
+                state = self.reset_environment(env)
+                #print state
+                for agent in self.agents:
+                    agent.recent_states.clear()
+                    # add states to recent states
+                    agent.recent_states.append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
+                    
+                #self.recent_states.clear() # reset the recent states buffer
+                
+                # TODO debug
+                #states = list(self.recent_states)
+                #if len(states) != 0  and (not type(states[0])==np.ndarray or np.isnan(states).any()):
+                    #print 'state is nan after clear'
+                    #print type(states[0])
+    
+                self.episode_steps = 0
+                episode_reward = np.zeros(len(self.agents))
+                # add states to recent states
+                #self.recent_states.append(self.preprocessor.process_state_for_memory(state))
+                
+                # TODO debug
+                #states = list(self.recent_states)
+                #if len(states) != 0  and (not type(states[0])==np.ndarray or np.isnan(states).any()):
+                    #print 'state is nan after append from reset'
+                    #print type(states[0])
+
+            # select action
+            actions = []
+            for agent in self.agents:
+                action = agent.select_action()
+                #action = self.select_action()
+                actions.append(action)
+            next_state, reward, terminal, _ = env.step(actions)
+            #print 'next state'
+            #print next_state.shape
+            #next_state = next_state[0]
+            #print 'before'
+            #print next_state.shape
+            # this is required because it is 1 x traffic state size
+            next_state = np.expand_dims(next_state, axis=1)
+            #print 'after'
+            #print next_state.shape
+            #reward = reward[0]
+            #print type(next_state)
+            #print next_state.shape
+            if type(next_state) is not np.ndarray:
+                print 'wrong'
+            elif np.isnan(next_state).any():
+                print 'some nan in state'
+            
+            # add sample to replay memory
+            self.memory.append(
+                self.preprocessor.process_state_for_memory(state),
+                actions,
+                self.preprocessor.process_reward(reward),
+                self.preprocessor.process_state_for_memory(next_state),
+                terminal)
+            
+            state = next_state
+            #print state
+            #print len(state)
+            
+            # add states to recent states
+            #self.recent_states.append(self.preprocessor.process_state_for_memory(state))
+            
+            # TODO debug
+            #states = list(self.recent_states)
+            #if len(states) != 0  and (not type(states[0])==np.ndarray or np.isnan(states).any()):
+                #print 'state is nan after append from step'
+                #print type(states[0])
+            #print episode_reward
+            #print reward
+            episode_reward += reward
+            
+            # update policy -- update Q network and update target network
+            #with tf.device('/gpu:0'):
+            #huber_losses = []
+            #mae_metrics = []
+            
+            # sample from memory buffer
+            sample = self.memory.sample(self.batch_size)
+            batch_state, batch_action, batch_reward, batch_next_state, batch_terminal = sample
+            #print 'batch state'
+            #print batch_state.shape
+            batch_state = batch_state.transpose(0,2,1,3, 4)
+            batch_next_state = batch_next_state.transpose(0,2,1,3, 4)
+            #print batch_state.shape, batch_action.shape, batch_reward.shape, batch_next_state.shape, batch_terminal.shape
+            
+            for i, agent in enumerate(self.agents):
+                agent.recent_states.append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
+                #print batch_state[:,i]             
+                new_sample = (batch_state[:,i], batch_action[:,i], batch_reward[:,i], batch_next_state[:,i], batch_terminal)
+
+                huber_loss, mae_metric = agent.update_policy(new_sample)
+                agent.steps = self.steps
+                #huber_losses.append(huber_loss)
+                #mae_metrics.append(mae_metrics)
+                
+                #huber_loss, mae_metric = None,None
+
+                # print 'steps: {} loss: {}'.format(self.steps, huber_loss)
+                # log info
+                # TODO agent name
+                if self.steps % self.log_interval == 0 and huber_loss and mae_metric:
+                    writer.add_summary(self.log_tb_value(agent.name + '_loss', huber_loss), self.steps)
+                    writer.add_summary(self.log_tb_value(agent.name + '_mae_metric', mae_metric), self.steps)
+                    writer.add_summary(self.log_tb_value(agent.name + '_reward', reward[i]), self.steps)
+                    
+                # save weights
+                if self.steps % save_interval == 0:
+                    file_name = agent.name + '_{}_{}_{}_weights.hdf5'.format(self.network, self.env_name, self.steps)
+                    file_path = weights_file + file_name
+                    agent.model.save_weights(file_path)
+                
+                
+            # episode terminal condition
+            if terminal or (max_episode_length and self.episode_steps % max_episode_length == 0):
+                print 'episode {} reward {}'.format(self.episodes, episode_reward)
+                self.episodes += 1
+                state = None
+                for r in episode_reward:
+                    writer.add_summary(self.log_tb_value(agent.name + '_episode_reward', r), self.episodes)
+                #writer.add_summary(self.log_tb_value('episode_length', self.episode_steps), self.episodes)
+                
+                # evaluation
+                if self.steps > self.num_burn_in and self.episodes % self.evaluation_interval == 0:
+                    # env_eval = gym.make(self.env_name)
+                    avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = self.evaluate(env, test_eval_steps)
+                    # print 'steps: {}, average reward: {}'.format(self.steps, avg_reward)
+                    writer.add_summary(self.log_tb_value('performance', avg_reward), self.steps)
+                    writer.add_summary(self.log_tb_value('waiting time', overall_waiting_time), self.steps)
+                    writer.add_summary(self.log_tb_value('DSRC-equipped waiting time', equipped_waiting_time), self.steps)
+                    writer.add_summary(self.log_tb_value('DSRC-unequipped waiting time', unequipped_waiting_time), self.steps)
+                    print 'Evaluation reward {}'.format(avg_reward)
+                    if avg_reward < min_reward:
+                        min_reward = avg_reward
+                        for agent in self.agents:
+                            file_name = agent.name + '_{}_{}_bestweights.hdf5'.format(self.network, self.env_name)
+                            file_path = weights_file + file_name
+                            agent.model.save_weights(file_path)
+                    # env_eval.close()
+                
+                
+            # counter update
+            self.steps += 1
+            self.episode_steps += 1
+        
+        # evaluate performance
+        # env_eval = gym.make(self.env_name)
+        avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = self.evaluate(env, test_eval_steps)
+        print 'steps: {}, average reward: {}'.format(self.steps, avg_reward)
+        writer.add_summary(self.log_tb_value('performance', avg_reward), self.steps)
+        writer.add_summary(self.log_tb_value('waiting time', overall_waiting_time), self.steps)
+        writer.add_summary(self.log_tb_value('DSRC-equipped waiting time', equipped_waiting_time), self.steps)
+        writer.add_summary(self.log_tb_value('DSRC-unequipped waiting time', unequipped_waiting_time), self.steps)      # env_eval.close()
+        
+        env.stop()
+
+    def evaluate(self, env, num_episodes, render=False, max_episode_length=None):
+        """Test your agent with a provided environment.
+        
+        You shouldn't update your network parameters here. Also if you
+        have any layers that vary in behavior between train/test time
+        (such as dropout or batch norm), you should set them to test.
+
+        Basically run your policy on the environment and collect stats
+        like cumulative reward, average episode length, etc.
+
+        You can also call the render function here if you want to
+        visually inspect your policy.
+        """
+        cumulative_reward = np.zeros(len(self.agents))
+        # env.start()
+        
+        for episode in range(num_episodes):
+
+            test_episode_steps = 0
+            state = self.reset_environment(env)
+            # add states to recent states for test
+            for agent in self.agents:
+                agent.recent_states.clear()
+                # add states to recent states
+                agent.recent_states_test.append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
+
+            #if render:
+                #env.render()
+            episode_reward = np.zeros(len(self.agents))
+            while True:
+                actions = []
+                for agent in self.agents:
+                    action = agent.select_action('test')
+                    actions.append(action)
+                #print actions
+                next_state, reward, terminal, _ = env.step(actions)
+                #next_state = next_state[0]
+                #next_state = np.expand_dims(next_state, axis=0)
+                # this is required because it is 1 x traffic state size
+                next_state = np.expand_dims(next_state, axis=1)
+                #reward = reward[0]
+                #if render:
+                    #env.render()
+                state = next_state
+                for agent in self.agents:
+                    agent.recent_states_test.append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
+                #self.recent_states_test.append(self.preprocessor.process_state_for_memory(state))
+                episode_reward += reward
+
+                # episode terminal condition
+                if terminal or (max_episode_length and test_episode_steps % max_episode_length == 0):
+                    break
+
+                test_episode_steps += 1
+                
+            cumulative_reward += episode_reward/test_episode_steps
+                
+        avg_total_reward = np.sum(cumulative_reward)/num_episodes
+        overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = env.get_result()
+        return avg_total_reward, overall_waiting_time,equipped_waiting_time,unequipped_waiting_time
+            
+  
 class DQNAgent:
     """Class implementing DQN.
 
     Parameters
+    f
     ----------
     model: keras.models.Model
       Your Q-network model.
@@ -70,6 +419,7 @@ class DQNAgent:
                  num_actions,
                  env_name,
                  network,
+                 name = '',
                  input_shape = (1,9)):
                     
         self.model = model
@@ -86,6 +436,7 @@ class DQNAgent:
         self.num_actions = num_actions
         self.env_name = env_name
         self.network = network
+        self.name = name
         self.input_shape = input_shape 
         
 
@@ -222,6 +573,7 @@ class DQNAgent:
                 states.insert(0, np.zeros(states[0].shape))
 
             states = self.preprocessor.process_batch(states)
+            #print 'test states for predict', states.shape, np.array([states]).shape
             q_values = self.calc_q_values_model(np.array([states])).flatten()
             action = self.test_policy.select_action(q_values)
         else:
@@ -241,12 +593,14 @@ class DQNAgent:
                         states.insert(0, np.zeros(self.input_shape))
                     # print 'state', states[0].shape
                     states1 = self.preprocessor.process_batch(states)
-                    # print 'states', states.shape, np.array([states]).shape
+                    #print 'train states for predict', states1.shape, np.array([states1]).shape
                     q_values = self.calc_q_values_model(np.array([states1])).flatten()
                     action = self.policy.select_action(q_values)
                 except:
+                    print 'Exception in select action'
                     print states
                     print states1
+                    print states1.shape
                     #time.sleep()
                     #print len(states)
 
@@ -262,7 +616,7 @@ class DQNAgent:
         actions = np.argmin(q_values,1).flatten()
         return actions
 
-    def update_policy(self):
+    def update_policy(self, sample=None):
         """Update your policy.
 
         Behavior may differ based on what stage of training your
@@ -281,8 +635,12 @@ class DQNAgent:
         mae_metric = None
         
         if self.steps > self.num_burn_in and self.steps % self.train_freq == 0:
-            # sample a mini batch
-            batch_state, batch_action, batch_reward, batch_next_state, batch_terminal = self.memory.sample(self.batch_size)
+            if sample:
+                batch_state, batch_action, batch_reward, batch_next_state, batch_terminal = sample
+            else:
+                # sample a mini batch
+                batch_state, batch_action, batch_reward, batch_next_state, batch_terminal = self.memory.sample(self.batch_size)
+            
             #print 'state', batch_state
             batch_state = self.preprocessor.process_batch(batch_state)
             batch_next_state = self.preprocessor.process_batch(batch_next_state)
@@ -331,8 +689,8 @@ class DQNAgent:
         """		
         
         state = env.reset()
-        if not state:
-            print 'Initial State is None'
+        #if not state:
+            #print 'Initial State is None'
         
         for _ in range(np.random.randint(self.start_random_steps)):
             action = env.action_space.sample() # sample random action

@@ -240,7 +240,8 @@ class ReplayMemory:
         batch_reward = []
         batch_next_state = []
         batch_terminal = []
-        
+        #print 'inside buffer'
+        #print self.buffer[0][0].shape
         for i in range(batch_size):
             idx = np.random.randint(self.window_length - 1, self.size)#self.start_index
             #print idx
@@ -255,13 +256,13 @@ class ReplayMemory:
                 # if among window frames, there is a terminal, append zero
                 if j != self.window_length-1 and self.buffer[idx - self.window_length + j + 1][2]:
                     while j >= 0:
-                        state_frame[j, :, :] = np.zeros(self.state_input)
-                        next_state_frame[j, :, :] = np.zeros(self.state_input)
+                        state_frame[j] = np.zeros(self.state_input)
+                        next_state_frame[j] = np.zeros(self.state_input)
                         j -= 1
                     break
                 else:
-                    state_frame[j, :, :] = self.buffer[idx - self.window_length + j + 1][0]
-                    next_state_frame[j, :, :] = self.buffer[idx - self.window_length + j + 1][3]
+                    state_frame[j] = self.buffer[idx - self.window_length + j + 1][0]
+                    next_state_frame[j] = self.buffer[idx - self.window_length + j + 1][3]
 
             batch_state.append(state_frame)
             batch_next_state.append(next_state_frame)
