@@ -331,7 +331,7 @@ def main():
             
             # save weights
             for agent in agents.agents:
-                file_name = agent.name + '_{}_{}_{}_weights.hdf5'.format(network, env_name, num_iterations)
+                file_name = '{}_{}_{}_weights_{}.hdf5'.format(network, env_name, num_iterations, agent.name)
                 file_path = weights_file + file_name
                 agent.model.save_weights(file_path)
             # env.close()
@@ -341,7 +341,8 @@ def main():
                 print 'please load a model'
                 return
             for i, agent in enumerate(agents.agents):
-                weight_name = 'DQN_weights/TL-run83/' + str(i) + '_DQN_SUMO_120000_weights.hdf5'
+                # currently, remove after weights....
+                weight_name = args.load + '_' + str(i) + '.hdf5'
                 agent.model.load_weights(weight_name)
             
             #print model.layers[3].get_weights()

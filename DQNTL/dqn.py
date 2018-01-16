@@ -253,7 +253,8 @@ class DQNAgents:
                     
                 # save weights
                 if self.steps % save_interval == 0:
-                    file_name = agent.name + '_{}_{}_{}_weights.hdf5'.format(self.network, self.env_name, self.steps)
+                    file_name = '{}_{}_{}_weights_{}.hdf5'.format(self.network, self.env_name, self.steps, agent.name)
+                    #file_name = agent.name + '_{}_{}_{}_weights.hdf5'.format(self.network, self.env_name, self.steps)
                     file_path = weights_file + file_name
                     agent.model.save_weights(file_path)
                 
