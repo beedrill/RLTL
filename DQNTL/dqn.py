@@ -264,8 +264,8 @@ class DQNAgents:
                 print 'episode {} reward {}'.format(self.episodes, episode_reward)
                 self.episodes += 1
                 state = None
-                for r in episode_reward:
-                    writer.add_summary(self.log_tb_value(agent.name + '_episode_reward', r), self.episodes)
+                for i, r in enumerate(episode_reward):
+                    writer.add_summary(self.log_tb_value(str(i) + '_episode_reward', r), self.episodes)
                 #writer.add_summary(self.log_tb_value('episode_length', self.episode_steps), self.episodes)
                 
                 # evaluation
@@ -281,7 +281,7 @@ class DQNAgents:
                     if avg_reward < min_reward:
                         min_reward = avg_reward
                         for agent in self.agents:
-                            file_name = agent.name + '_{}_{}_bestweights.hdf5'.format(self.network, self.env_name)
+                            file_name = '{}_{}_best_weights_{}.hdf5'.format(self.network, self.env_name, agent.name)
                             file_path = weights_file + file_name
                             agent.model.save_weights(file_path)
                     # env_eval.close()
