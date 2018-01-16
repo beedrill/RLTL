@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<nodes>
+    <node id="0" x="0.0" y="0.0" type="traffic_light" tl="0" tlType="static"/>
+    <node id="1" x="125.0" y="0.0" type="traffic_light" tl="1" tlType="static"/>
+    <node id="n0" x="0.0" y="251.0" type="priority"/>
+    <node id="n1" x="125.0" y="251.0" type="priority"/>
+    <node id="s0" x="0.0" y="-251.0" type="priority"/>
+    <node id="s1" x="125.0" y="-251.0" type="priority"/>
+    <node id="e" x="376.0" y="0.0" type="priority"/>
+    <node id="w" x="-251.0" y="0.0" type="priority"/>
+</nodes>

@@ -38,19 +38,21 @@ class Simulator():
         self.tl_list = {}
         self.is_started = False
         self.time = 0
-        lane_list = ['0_e_0', '0_n_0','0_s_0','0_w_0','e_0_0','n_0_0','s_0_0','w_0_0'] # temporary, in the future, get this from the .net.xml file
-        self.lane_list = {l:Lane(l,self,penetration_rate=penetration_rate) for l in lane_list}
-        tl_list = ['0'] # temporary, in the future, get this from .net.xml file
-        self.tl_id_list = tl_list
+        self.penetration_rate = penetration_rate
+        #lane_list = ['0_e_0', '0_n_0','0_s_0','0_w_0','e_0_0','n_0_0','s_0_0','w_0_0'] # temporary, in the future, get this from the .net.xml file
+        #self.lane_list = {l:Lane(l,self,penetration_rate=penetration_rate) for l in lane_list}
+        #tl_list = ['0'] # temporary, in the future, get this from .net.xml file
+        #self.tl_id_list = tl_list
         self.num_traffic_state = num_traffic_state
-        for tlid in tl_list:
-            self.tl_list[tlid] = SimpleTrafficLight(tlid, self, num_traffic_state = self.num_traffic_state)
+        self._init_sumo_info()
+        #for tlid in tl_list:
+        #    self.tl_list[tlid] = SimpleTrafficLight(tlid, self, num_traffic_state = self.num_traffic_state)
         ###RL parameters
        
         ##############
         self.episode_time = episode_time
-        self.action_space = ActionSpaces(len(tl_list), 2) # action = 1 means move to next phase, otherwise means stay in current phase
-        self.penetration_rate = penetration_rate
+        self.action_space = ActionSpaces(len(self.tl_list), 2) # action = 1 means move to next phase, otherwise means stay in current phase
+        
 
         if self.visual == False:
             self.cmd = ['sumo', 
@@ -69,7 +71,31 @@ class Simulator():
             self.cmd+=['--additional-files', self.additional_file]
         if not gui_setting_file == None:
             self.cmd+=['--gui-settings-file', self.gui_setting_file]
-                
+        
+     
+    def _init_sumo_info(self):
+        cmd = ['sumo', 
+                  '--net-file', self.map_file, 
+                  '--route-files', self.route_file,
+                  '--end', str(self.end_time)]
+        traci.start(cmd)
+        tl_list = traci.trafficlights.getIDList()
+        #print 'tls:',tl_list
+        self.tl_id_list = tl_list
+        
+        for tlid in tl_list:
+            self.tl_list[tlid] = SimpleTrafficLight(tlid, self, num_traffic_state = self.num_traffic_state, lane_list = list(set(traci.trafficlights.getControlledLanes(tlid))))
+            #print 'controlled lane', self.tl_list[tlid].lane_list
+        lane_list = traci.lane.getIDList()
+        self.lane_list = {}
+        for l in lane_list:
+            #print 'lane list', lane_list
+            if l.startswith(':'):
+                continue
+            self.lane_list[l] = Lane(l,self,penetration_rate=self.penetration_rate)
+            #print 'lane list', l
+        print len(self.lane_list.keys())
+        traci.close()
     def _simulation_start(self):
         if self.visual == False:
             pysumo.simulation_start(self.cmd)
@@ -138,14 +164,19 @@ class Simulator():
             
         self.veh_list = {}
         self.time = 0
-        self.start()
+        self.start()            
+        #print state
+        #print len(state)
         
         observation = []
         reward = []
         info = (self.time, len(self.veh_list.keys()))
+        
         for l in self.lane_list:
             self.lane_list[l].reset()
             self.lane_list[l].update_lane_reward()
+            
+        #print 'haha', self.tl_id_list
         for tlid in self.tl_id_list:
             tl = self.tl_list[tlid]
             #print actions
@@ -155,7 +186,8 @@ class Simulator():
             observation.append(tl.traffic_state)
             reward.append(self.tl_list[tlid].reward)
             #i += 1
-        return observation
+        #print 'haha', observation
+        return np.array(observation)
         
     def get_result(self):
         total_waiting = 0.
@@ -302,10 +334,10 @@ class TrafficLight():
 
 
 class SimpleTrafficLight(TrafficLight):
-    def __init__(self, tlid, simulator, max_phase_time= 40., min_phase_time = 5, yellow_time = 3, num_traffic_state = 10):
+    def __init__(self, tlid, simulator, max_phase_time= 40., min_phase_time = 5, yellow_time = 3, num_traffic_state = 10, lane_list = []):
         
         TrafficLight.__init__(self, tlid, simulator)
-        self.signal_groups = ['rGrG','ryry','GrGr','yryr']
+        self.signal_groups = ['rrrrGGGGrrrrGGGG','rrrryyyyrrrryyyy','GGGGrrrrGGGGrrrr','yyyyrrrryyyyrrrr']
         self.current_phase = 0  # phase can be 0, 1, 2, 3
         self.current_phase_time = 0
         self.max_time = max_phase_time
@@ -316,7 +348,7 @@ class SimpleTrafficLight(TrafficLight):
         # (car num, .. , dist to TL, .., current phase time)
         self.num_traffic_state = num_traffic_state
         self.traffic_state = [None for i in range(0, self.num_traffic_state)]
-
+        self.lane_list = lane_list
         # Traffic State 2
         # Lanes with car speed in its position
         #self.MAP_SPEED = False
@@ -329,7 +361,7 @@ class SimpleTrafficLight(TrafficLight):
         self.reward = None
     
     def updateRLParameters(self):
-        lane_list = ['e_0_0','w_0_0','n_0_0','s_0_0']  # temporary, in the future, get this from the .net.xml file
+        lane_list = self.lane_list  # temporary, in the future, get this from the .net.xml file
         sim = self.simulator
         self.reward = 0
         
@@ -421,7 +453,11 @@ if __name__ == '__main__':
     num_episode = 100
     episode_time = 3000
     
-    sim = Simulator(episode_time=episode_time,visual=True,penetration_rate = 0.5)
+    sim = Simulator(episode_time=episode_time,
+                    visual=True,
+                    penetration_rate = 0.5,
+                    map_file = 'map/two-intersection/traffic.net.xml', 
+                 route_file = 'map/two-intersection/traffic.rou.xml')
     #sim = Simulator(visual = True, episode_time=episode_time)
     # use this commend if you don't have pysumo installed
     sim.start()
@@ -430,11 +466,11 @@ if __name__ == '__main__':
         while True:
             action = sim.action_space.sample()
             next_state, reward, terminal, info = sim.step(action)
-            #sim.print_status()
-            if terminal:
-                state = sim.reset()
-                print state
-                array = np.array(state, np.float32)
+            sim.print_status()
+            #if terminal:
+            #    state = sim.reset()
+            #    print state
+            #    array = np.array(state, np.float32)
                 #sim.print_status()
             #    break
     sim.stop()

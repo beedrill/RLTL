@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<edges>
+    <edge id="n_0" from="n0" to="0">
+        <lane index="0" />
+    </edge>
+    <edge id="s_0" from="s0" to="0">
+        <lane index="0" />
+    </edge>
+    <edge id="n_1" from="n1" to="1">
+        <lane index="0" />
+    </edge>
+    <edge id="s_1" from="s1" to="1">
+        <lane index="0" />
+    </edge>
+    <edge id="e_1" from="e" to="1">
+        <lane index="0" />
+    </edge>
+    <edge id="w_0" from="w" to="0">
+        <lane index="0" />
+    </edge>
+    <edge id="0_n" from="0" to="n0">
+        <lane index="0" />
+    </edge>
+    <edge id="0_s" from="0" to="s0">
+        <lane index="0" />
+    </edge>
+    <edge id="1_n" from="1" to="n1">
+        <lane index="0" />
+    </edge>
+    <edge id="1_s" from="1" to="s1">
+        <lane index="0" />
+    </edge>
+    <edge id="1_e" from="1" to="e">
+        <lane index="0" />
+    </edge>
+    <edge id="0_w" from="0" to="w">
+        <lane index="0" />
+    </edge>
+    <edge id="0_1" from="0" to="1">
+        <lane index="0" />
+    </edge>
+    <edge id="1_0" from="1" to="0">
+        <lane index="0" />
+    </edge>
+</edges>

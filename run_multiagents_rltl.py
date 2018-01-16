@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Run DQN to train traffic lights in SUMO environment.
+Run DQN to train multiple traffic lights in SUMO environment.
 
 """
 
@@ -14,7 +14,7 @@ from keras.models import Model
 from keras.optimizers import Adam
 import keras.backend as K
 
-from DQNTL.dqn import DQNAgent
+from DQNTL.dqn import DQNAgent, DQNAgents
 from DQNTL.preprocessors import TLStatePreprocessor, TLMAPPreprocessor
 from DQNTL.utils import ReplayMemory
 from DQNTL.policy import GreedyEpsilonPolicy, LinearDecayGreedyEpsilonPolicy
@@ -169,18 +169,31 @@ def main():
 
     if args.pysumo:
         import pysumo
-        env = Simulator(episode_time=episode_time,penetration_rate = args.penetration_rate)
+        env = Simulator(episode_time=episode_time,
+                        penetration_rate = args.penetration_rate,
+                        map_file = 'map/two-intersection/traffic.net.xml', 
+                        route_file = 'map/two-intersection/traffic.rou.xml')
         #test_env = Simulator(episode_time=episode_time, penetration_rate = args.penetration_rate)
         #env.start()
         # test_env.start() # TODO
     else:
         import traci
-        env = Simulator(visual=True, episode_time=episode_time, penetration_rate = args.penetration_rate)
+        env = Simulator(visual=True,
+                        episode_time=episode_time,
+                        penetration_rate = args.penetration_rate,
+                        map_file = 'map/two-intersection/traffic.net.xml', 
+                        route_file = 'map/two-intersection/traffic.rou.xml')
         # test_env = Simulator(visual=True, episode_time=episode_time)
         #env.start()
-
+        
+    id_list = env.tl_id_list
+    num_agents = len(id_list)
+    
     if tl_state == 1:
         input_shape = (1, env.num_traffic_state)
+        buffer_input_shape = (num_agents, 1, env.num_traffic_state)
+        #print 'input shape'
+        #print input_shape
         window = 1
         preprocessor = TLStatePreprocessor()
     elif tl_state == 2:
@@ -233,38 +246,65 @@ def main():
         # preprocessor = AtariPreprocessor(new_size=(84, 84), crop_centering=(0.5, 0.7))
         # memory
         # memory = ReplayMemory(max_size=1000000, window_length=4, state_input=(84, 84))
-        memory = ReplayMemory(max_size=memory_size, window_length=window, state_input=input_shape)
+        memory = ReplayMemory(max_size=memory_size, window_length=window, state_input=buffer_input_shape)
         # policy
         #if args.mode == 'train':
         policy = LinearDecayGreedyEpsilonPolicy(start_value=1.0, end_value=0.05, num_steps=decay_steps, num_actions=num_actions)
         #if args.mode == 'test':ne 233, i
             #policy = GreedyPolicy()#GreedyEpsilonPolicy(epsilon=0.05, num_actions=num_actions)
-        # agent
-        agent =  DQNAgent(
-            model=model,
-            preprocessor=preprocessor,
-            memory=memory,
-            policy=policy,
-            gamma=0.9,
-            target_update_freq=target_update_freq,
-            num_burn_in=num_burn_in,
-            train_freq=train_freq,
-            batch_size=32,
-            window_length=window,
-            start_random_steps=20,
-            num_actions=num_actions,
-            env_name=env_name,
-            network=network,
-            input_shape = input_shape)
-    
-        # optimizer								
+                # optimizer							
         adam = Adam(lr=lr)
-        # compile
-        agent.compile(optimizer=adam, loss_func=mean_huber_loss, metrics=['mae'])
+        agent_list = []
         
-        if args.load:
-            print 'loaded model'
-            agent.model.load_weights(args.load)
+        for id in id_list:
+
+            # agent
+            agent =  DQNAgent(
+                model=model,
+                preprocessor=preprocessor,
+                memory=memory,
+                policy=policy,
+                gamma=0.9,
+                target_update_freq=target_update_freq,
+                num_burn_in=num_burn_in,
+                train_freq=train_freq,
+                batch_size=32,
+                window_length=window,
+                start_random_steps=20,
+                num_actions=num_actions,
+                env_name=env_name,
+                network=network,
+                name=id,
+                input_shape = input_shape)
+            
+            # compile
+            agent.compile(optimizer=adam, loss_func=mean_huber_loss, metrics=['mae'])
+            agent_list.append(agent)
+        
+        agents = DQNAgents(
+                agent_list,
+                #model=model,
+                preprocessor=preprocessor,
+                memory=memory,
+                #policy=policy,
+                #gamma=0.9,
+                #target_update_freq=target_update_freq,
+                num_burn_in=num_burn_in,
+                #train_freq=train_freq,
+                batch_size=32,
+                #window_length=window,
+                start_random_steps=20,
+                #num_actions=num_actions,
+                env_name=env_name,
+                network=network,
+                #name=id,
+                input_shape = input_shape)
+        
+        # TODO
+        #if args.load:
+            #print 'loaded model'
+            #agent.model.load_weights(args.load)
+
     
         if args.mode == 'train':
             # log file
@@ -287,24 +327,28 @@ def main():
             save_interval = num_iterations / 30  # save model every 1/3
             #save_interval = 1
             # print 'start training....'
-            agent.fit(env=env, num_iterations=num_iterations, save_interval=save_interval, writer=writer, weights_file=weights_file)
+            agents.fit(env=env, num_iterations=num_iterations, save_interval=save_interval, writer=writer, weights_file=weights_file)
             
             # save weights
-            file_name = '{}_{}_{}_weights.hdf5'.format(network, env_name, num_iterations)
-            file_path = weights_file + file_name
-            agent.model.save_weights(file_path)
+            for agent in agents.agents:
+                file_name = '{}_{}_{}_weights_{}.hdf5'.format(network, env_name, num_iterations, agent.name)
+                file_path = weights_file + file_name
+                agent.model.save_weights(file_path)
             # env.close()
             
         else: # test
             if not args.load:
                 print 'please load a model'
                 return
-            agent.model.load_weights(args.load)
+            for i, agent in enumerate(agents.agents):
+                # currently, remove after weights....
+                weight_name = args.load + '_' + str(i) + '.hdf5'
+                agent.model.load_weights(weight_name)
             
             #print model.layers[3].get_weights()
             #print 'number of layers',len(model.layers)
             num_episodes = 10
-            avg_total_reward = agent.evaluate(env=env, num_episodes=num_episodes, render=args.render)
+            avg_total_reward = agents.evaluate(env=env, num_episodes=num_episodes, render=args.render)
             print 'average total reward for {} episodes: {}'.format(num_episodes, avg_total_reward)
             env.stop()
             # env.close()
