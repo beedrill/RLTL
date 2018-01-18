@@ -12,15 +12,30 @@ README for Traffic Light Optimization using DQN
 - pip install -U -r requirements.txt
 
 
-## Train
+## Single Agent
+### Train
 ```
 python run_rltl.py
 ```
 - if you run on CPU, make sure to put --cpu
 - default is sumo, in order to use pysumo make sure to put --pysumo
 
-
-## Evaluate
+### Evaluate
 ```
 python run_rltl.py --mode test --load [weights.hdf5]
 ```
+
+## Multi Agents
+### Train
+```
+python run_multiagents_rltl.py
+```
+- if you run on CPU, make sure to put --cpu
+- default is sumo, in order to use pysumo make sure to put --pysumo
+
+### Evaluate
+```
+python run_multiagents_rltl.py --mode test --load [weights.hdf5]
+```
+- currently, weights are saved as ~weights_[agent id].hdf5, so when you load, remove letters after weights
+    e.g. DQN_SUMO_best_weights_0.hdf5 => DQN_SUMO_best_weights
