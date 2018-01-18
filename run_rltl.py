@@ -21,9 +21,6 @@ from DQNTL.policy import GreedyEpsilonPolicy, LinearDecayGreedyEpsilonPolicy
 from DQNTL.objectives import mean_huber_loss
 
 from simulator import Simulator
-#from simulator_simple import Simulator
-# import gym
-# from gym import wrappers
 
 
 def conv_layers(permute):
@@ -146,7 +143,6 @@ def main():
     parser.add_argument('--load', help='load model.')
     # parser.add_argument('--double', action='store_true', help='double DQN implementation.')
     # parser.add_argument('--duel', action='store_true', help='duel DQN implementation.')
-    parser.add_argument('--render', action='store_true', default=False, help='render while testing')
     parser.add_argument('--pysumo', action='store_true', help='use pysumo')
     parser.add_argument('--dir_name', default = 'TL',help = 'directory name')
     parser.add_argument('--no_counter', action = 'store_true', default = False, help = 'no counter in saving files, note it might overwrite previous results')
@@ -170,14 +166,9 @@ def main():
     if args.pysumo:
         import pysumo
         env = Simulator(episode_time=episode_time,penetration_rate = args.penetration_rate)
-        #test_env = Simulator(episode_time=episode_time, penetration_rate = args.penetration_rate)
-        #env.start()
-        # test_env.start() # TODO
     else:
         import traci
         env = Simulator(visual=True, episode_time=episode_time, penetration_rate = args.penetration_rate)
-        # test_env = Simulator(visual=True, episode_time=episode_time)
-        #env.start()
 
     if tl_state == 1:
         input_shape = (1, env.num_traffic_state)
@@ -191,30 +182,17 @@ def main():
         print 'invalid state'
         return
 
-    
-    # select the network
-    # if args.double:
-    #     network = 'doubleDQN'
-    # elif args.duel:
-    #     network = 'duelDQN'
-    # else:
-    #     network = 'DQN'
     network = 'DQN'
     
     # choose device
     device = '/gpu:{}'.format(args.gpu)
     if args.cpu:
         device = '/cpu:0'
-        
-    # env_name = args.env
-    # env = gym.make(args.env)
+
     env_name = 'SUMO'
     seed = args.seed
     # env.seed(seed)
-    
-    # if args.mode == 'test':
-        # env = wrappers.Monitor(env, 'video', force=True)
-    
+
     num_actions = env.action_space.n
     # print 'num_actions', num_actions
     
@@ -229,18 +207,12 @@ def main():
     
         # model
         model = create_model(window=window, input_shape=input_shape, num_actions=num_actions)
-        # preprocessor
-        # preprocessor = AtariPreprocessor(new_size=(84, 84), crop_centering=(0.5, 0.7))
         # memory
-        # memory = ReplayMemory(max_size=1000000, window_length=4, state_input=(84, 84))
         memory = ReplayMemory(max_size=memory_size, window_length=window, state_input=input_shape)
         # policy
-        #if args.mode == 'train':
         policy = LinearDecayGreedyEpsilonPolicy(start_value=1.0, end_value=0.05, num_steps=decay_steps, num_actions=num_actions)
-        #if args.mode == 'test':ne 233, i
-            #policy = GreedyPolicy()#GreedyEpsilonPolicy(epsilon=0.05, num_actions=num_actions)
         # agent
-        agent =  DQNAgent(
+        agent = DQNAgent(
             model=model,
             preprocessor=preprocessor,
             memory=memory,
@@ -255,7 +227,7 @@ def main():
             num_actions=num_actions,
             env_name=env_name,
             network=network,
-            input_shape = input_shape)
+            input_shape=input_shape)
     
         # optimizer								
         adam = Adam(lr=lr)
@@ -285,7 +257,6 @@ def main():
             weights_file += '/'
             
             save_interval = num_iterations / 30  # save model every 1/3
-            #save_interval = 1
             # print 'start training....'
             agent.fit(env=env, num_iterations=num_iterations, save_interval=save_interval, writer=writer, weights_file=weights_file)
             
@@ -293,9 +264,8 @@ def main():
             file_name = '{}_{}_{}_weights.hdf5'.format(network, env_name, num_iterations)
             file_path = weights_file + file_name
             agent.model.save_weights(file_path)
-            # env.close()
             
-        else: # test
+        else:  # test
             if not args.load:
                 print 'please load a model'
                 return
@@ -304,12 +274,9 @@ def main():
             #print model.layers[3].get_weights()
             #print 'number of layers',len(model.layers)
             num_episodes = 10
-            avg_total_reward = agent.evaluate(env=env, num_episodes=num_episodes, render=args.render)
+            avg_total_reward = agent.evaluate(env=env, num_episodes=num_episodes)
             print 'average total reward for {} episodes: {}'.format(num_episodes, avg_total_reward)
             env.stop()
-            # env.close()
-            # gym.upload('video', api_key='sk_3c7LciLRP2HToiNly5iqA')
-    
 
 if __name__ == '__main__':
     main()
