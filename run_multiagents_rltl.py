@@ -161,6 +161,9 @@ def main():
     num_burn_in = 10000
     train_freq = 1
     tl_state = 1
+    
+    window = 10  # total size of the state
+    stride = 2  # stride/skip of states
 
     if args.pysumo:
         import pysumo
@@ -182,7 +185,6 @@ def main():
     if tl_state == 1:
         input_shape = (1, env.num_traffic_state)
         buffer_input_shape = (num_agents, 1, env.num_traffic_state)
-        window = 1
         preprocessor = TLStatePreprocessor()
     elif tl_state == 2:
         input_shape = (4, 250)
@@ -218,7 +220,7 @@ def main():
         # model
         model = create_model(window=window, input_shape=input_shape, num_actions=num_actions)
         # memory
-        memory = ReplayMemory(max_size=memory_size, window_length=window, state_input=buffer_input_shape)
+        memory = ReplayMemory(max_size=memory_size, window_length=window, stride=stride, state_input=buffer_input_shape)
         # policy
         policy = LinearDecayGreedyEpsilonPolicy(start_value=1.0, end_value=0.05, num_steps=decay_steps, num_actions=num_actions)
         # optimizer
@@ -258,7 +260,7 @@ def main():
                 #gamma=0.9,
                 #target_update_freq=target_update_freq,
                 num_burn_in=num_burn_in,
-                #train_freq=train_freq,
+                train_freq=train_freq,
                 batch_size=32,
                 #window_length=window,
                 start_random_steps=20,

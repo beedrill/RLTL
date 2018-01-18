@@ -22,7 +22,7 @@ class DQNAgents:
                  #gamma,
                  #target_update_freq,
                  num_burn_in,
-                 #train_freq,
+                 train_freq,
                  batch_size,
                  #window_length,
                  start_random_steps,
@@ -38,7 +38,7 @@ class DQNAgents:
         #self.gamma = gamma
         #self.target_update_freq = target_update_freq
         self.num_burn_in = num_burn_in
-        #self.train_freq = train_freq
+        self.train_freq = train_freq
         self.batch_size = batch_size
         #self.window_length = window_length
         self.start_random_steps = start_random_steps
@@ -147,7 +147,7 @@ class DQNAgents:
             #     print 'wrong'
             # elif np.isnan(next_state).any():
             #     print 'some nan in state'
-            
+
             # add sample to replay memory
             self.memory.append(
                 self.preprocessor.process_state_for_memory(state),
@@ -160,19 +160,22 @@ class DQNAgents:
 
             episode_reward += reward
 
-            # sample from memory buffer
-            sample = self.memory.sample(self.batch_size)
-            batch_state, batch_action, batch_reward, batch_next_state, batch_terminal = sample
-            batch_state = batch_state.transpose(0, 2, 1, 3, 4)
-            batch_next_state = batch_next_state.transpose(0, 2, 1, 3, 4)
-            # hacky solution to deal with multiagents since the dimension is added
-            # print batch_state.shape, batch_action.shape, batch_reward.shape, batch_next_state.shape, batch_terminal.shape
+            if self.steps > self.num_burn_in and self.steps % self.train_freq == 0:
+                # sample from memory buffer
+                sample = self.memory.subsample(self.batch_size)
+                batch_state, batch_action, batch_reward, batch_next_state, batch_terminal = sample
+                batch_state = batch_state.transpose(0, 2, 1, 3, 4)
+                batch_next_state = batch_next_state.transpose(0, 2, 1, 3, 4)
+                # hacky solution to deal with multiagents since the dimension is added
+                # print batch_state.shape, batch_action.shape, batch_reward.shape, batch_next_state.shape, batch_terminal.shape
             
             for i, agent in enumerate(self.agents):
                 agent.recent_states.append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
-                new_sample = (batch_state[:, i], batch_action[:, i], batch_reward[:, i], batch_next_state[:, i], batch_terminal)
-
-                huber_loss, mae_metric = agent.update_policy(new_sample)
+                if self.steps > self.num_burn_in and self.steps % self.train_freq == 0:
+                    new_sample = (batch_state[:, i], batch_action[:, i], batch_reward[:, i], batch_next_state[:, i], batch_terminal)
+                    huber_loss, mae_metric = agent.update_policy(new_sample)
+                else:
+                    huber_loss, mae_metric = None, None
                 agent.steps = self.steps
 
                 # print 'steps: {} loss: {}'.format(self.steps, huber_loss)
