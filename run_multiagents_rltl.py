@@ -162,7 +162,7 @@ def main():
     train_freq = 1
     tl_state = 1
     
-    window = 10  # total size of the state
+    window = 5  # total size of the state
     stride = 2  # stride/skip of states
 
     if args.pysumo:
@@ -245,7 +245,8 @@ def main():
                 env_name=env_name,
                 network=network,
                 name=id,
-                input_shape=input_shape)
+                input_shape=input_shape,
+                stride=stride)
             
             # compile
             agent.compile(optimizer=adam, loss_func=mean_huber_loss, metrics=['mae'])
@@ -268,7 +269,8 @@ def main():
                 env_name=env_name,
                 network=network,
                 #name=id,
-                input_shape=input_shape)
+                input_shape=input_shape,
+                stride=stride)
     
         if args.mode == 'train':
             # log file
