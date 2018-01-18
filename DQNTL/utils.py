@@ -232,8 +232,14 @@ class ReplayMemory:
         s = Sample(state, action, reward, next_state, terminal)
         self.buffer[(self.start_index + self.size - 1) % self.max_size] = s.sample
 
-    def subsample(self, batch_size, stride=None, indexes=None):
-        """ subsample a batch from replay memory """
+    def subsample(self, batch_size, stride=0, indexes=None):
+        """ 
+        subsample a batch from replay memory 
+        e.g. window_length = 3, stride = 1
+        0 1 2 3 4
+        samples O-O-O, so
+        024 is the states representation                
+        """
 
         batch_state = []
         batch_action = []
@@ -241,32 +247,36 @@ class ReplayMemory:
         batch_next_state = []
         batch_terminal = []
 
-        # total size of buffer size requird to get subsample of size window length with subsample rate
+        # total size of buffer size required to get subsample of size window length with subsample rate (stride is skip)
         sample_size = (self.window_length - 1) * (stride + 1) + 1
 
-        buffer_start = sample_size - 1
-        # TODO: when buffer is full, be able to wrap around
+        #buffer_start = sample_size - 1
         for i in range(batch_size):
-            idx = np.random.randint(buffer_start, self.size)
-
+            if self.size < self.max_size:
+                sample_start_index = sample_size - 1
+            else:
+                # if the buffer is full, can wrap around
+                sample_start_index = 0
+            idx = np.random.randint(sample_start_index, self.size)
             # deal with discontinuity at the start index
             while self.start_index <= idx < (self.start_index + sample_size - 1):
-                idx = np.random.randint(buffer_start, self.size)
+                idx = np.random.randint(sample_start_index, self.size)
 
             state_frame = np.zeros((self.window_length,) + self.state_input)
             next_state_frame = np.zeros((self.window_length,) + self.state_input)
             buffer_index = sample_size - 1
             for j in range(self.window_length - 1, -1, -1):
                 # if among window frames, there is a terminal, append zero
-                if j != self.window_length - 1 and self.buffer[idx - sample_size + buffer_index + 1][2]:
+                if j != self.window_length - 1 and self.buffer[idx - sample_size + buffer_index + 1][2] == True:
                     while j >= 0:
-                        state_frame[j, :, :] = np.zeros(self.state_input)
-                        next_state_frame[j, :, :] = np.zeros(self.state_input)
+                        state_frame[j] = np.zeros(self.state_input)
+                        next_state_frame[j] = np.zeros(self.state_input)
                         j -= 1
                     break
                 else:
-                    state_frame[j, :, :] = self.buffer[idx - sample_size + buffer_index + 1][0]
-                    next_state_frame[j, :, :] = self.buffer[idx - sample_size + buffer_index + 1][3]
+                    state_frame[j] = self.buffer[idx - sample_size + buffer_index + 1][0]
+                    next_state_frame[j] = self.buffer[idx - sample_size + buffer_index + 1][3]
+                buffer_index -= stride + 1
 
             batch_state.append(state_frame)
             batch_next_state.append(next_state_frame)
@@ -302,7 +312,7 @@ class ReplayMemory:
             next_state_frame = np.zeros((self.window_length,) + self.state_input)
             for j in range(self.window_length-1, -1, -1):
                 # if among window frames, there is a terminal, append zero
-                if j != self.window_length-1 and self.buffer[idx - self.window_length + j + 1][2]:
+                if j != self.window_length-1 and self.buffer[idx - self.window_length + j + 1][2] == True:
                     while j >= 0:
                         state_frame[j] = np.zeros(self.state_input)
                         next_state_frame[j] = np.zeros(self.state_input)
