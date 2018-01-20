@@ -1,4 +1,4 @@
-import pysumo
+#import pysumo
 # comment this line if you dont have pysumo and set visual = True, it should still run traci
 # Todo: another class for another kind of traffic state formation
 import traci
@@ -218,7 +218,8 @@ class Simulator():
         return self.average_waiting_time,self.equipped_average_waiting_time, self.nonequipped_average_waiting_time   
     def print_status(self):
         #print self.veh_list
-        print 'current time:', self.time, ' total cars:', len(self.veh_list.keys()), 'traffic status', self.tl_list['0'].traffic_state, 'reward:', self.tl_list['0'].reward
+        tl = self.tl_list[self.tl_id_list[0]]
+        print 'current time:', self.time, ' total cars:', len(self.veh_list.keys()), 'traffic status', tl.traffic_state, 'reward:', tl.reward
                                                              
 
 
@@ -456,8 +457,8 @@ if __name__ == '__main__':
     sim = Simulator(episode_time=episode_time,
                     visual=True,
                     penetration_rate = 0.5,
-                    map_file = 'map/two-intersection/traffic.net.xml', 
-                 route_file = 'map/two-intersection/traffic.rou.xml')
+                    map_file = 'map/5-intersections/traffic.net.xml', 
+                 route_file = 'map/5-intersections/traffic.rou.xml')
     #sim = Simulator(visual = True, episode_time=episode_time)
     # use this commend if you don't have pysumo installed
     sim.start()
