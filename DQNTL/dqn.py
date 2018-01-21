@@ -135,7 +135,7 @@ class DQNAgents:
                     
                     # add states to recent states
                     #agent.recent_states.append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
-                    agent.recent_states_map[self.steps % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
+                    agent.recent_states_map[self.steps % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state[agent.index]))
     
                 self.episode_steps = 0
                 episode_reward = np.zeros(len(self.agents))
@@ -179,7 +179,7 @@ class DQNAgents:
             for i, agent in enumerate(self.agents):
                 #agent.recent_states.append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
                 # self.steps + 1 because select action happens after this iteration and doesn't want empty recent list
-                agent.recent_states_map[(self.steps + 1) % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
+                agent.recent_states_map[(self.steps + 1) % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state[agent.index]))
                 if self.steps > self.num_burn_in and self.steps % self.train_freq == 0:
                     new_sample = (batch_state[:, i], batch_action[:, i], batch_reward[:, i], batch_next_state[:, i], batch_terminal)
                     huber_loss, mae_metric = agent.update_policy(new_sample)
@@ -265,7 +265,7 @@ class DQNAgents:
                     recent_states.clear()  # reset the recent states buffer
                 # add states to recent states
                 #agent.recent_states_test.append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
-                agent.recent_states_test_map[test_episode_steps % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
+                agent.recent_states_test_map[test_episode_steps % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state[int(agent.index)]))
 
             episode_reward = np.zeros(len(self.agents))
             while True:
@@ -279,7 +279,7 @@ class DQNAgents:
 
                 state = next_state
                 for agent in self.agents:
-                    agent.recent_states_test_map[(test_episode_steps + 1) % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
+                    agent.recent_states_test_map[(test_episode_steps + 1) % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state[agent.index]))
                     #agent.recent_states_test.append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
                 episode_reward += reward
 
@@ -354,6 +354,7 @@ class DQNAgent:
                  network,
                  name='',
                  input_shape=(1, 9),
+                 index = 0,
                  stride=0):
                     
         self.model = model
@@ -371,6 +372,7 @@ class DQNAgent:
         self.env_name = env_name
         self.network = network
         self.name = name
+        self.index = index
         self.input_shape = input_shape
         self.stride = stride
 

@@ -169,15 +169,15 @@ def main():
         import pysumo
         env = Simulator(episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/two-intersection/traffic.net.xml',
-                        route_file='map/two-intersection/traffic.rou.xml')
+                        map_file='map/5-intersections/traffic.net.xml',
+                        route_file='map/5-intersections/traffic.rou.xml')
     else:
         import traci
         env = Simulator(visual=True,
                         episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/two-intersection/traffic.net.xml',
-                        route_file='map/two-intersection/traffic.rou.xml')
+                        map_file='map/5-intersections/traffic.net.xml',
+                        route_file='map/5-intersections/traffic.rou.xml')
         
     id_list = env.tl_id_list
     num_agents = len(id_list)
@@ -226,7 +226,7 @@ def main():
         # optimizer
         adam = Adam(lr=lr)
         agent_list = []
-        
+        index = 0
         for id in id_list:
             # agent
             agent = DQNAgent(
@@ -245,8 +245,10 @@ def main():
                 env_name=env_name,
                 network=network,
                 name=id,
+                index = index,
                 input_shape=input_shape,
                 stride=stride)
+            index+=1
             
             # compile
             agent.compile(optimizer=adam, loss_func=mean_huber_loss, metrics=['mae'])
