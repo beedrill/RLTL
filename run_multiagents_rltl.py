@@ -162,22 +162,22 @@ def main():
     train_freq = 1
     tl_state = 1
     
-    window = 5  # total size of the state
-    stride = 2  # stride/skip of states
+    window = 1  # total size of the state
+    stride = 0  # stride/skip of states
 
     if args.pysumo:
         import pysumo
         env = Simulator(episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/5-intersections/traffic.net.xml',
-                        route_file='map/5-intersections/traffic.rou.xml')
+                        map_file='map/two-intersection/traffic.net.xml',
+                        route_file='map/two-intersection/traffic.rou.xml')
     else:
         import traci
         env = Simulator(visual=True,
                         episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/5-intersections/traffic.net.xml',
-                        route_file='map/5-intersections/traffic.rou.xml')
+                        map_file='map/two-intersection/traffic.net.xml',
+                        route_file='map/two-intersection/traffic.rou.xml')
         
     id_list = env.tl_id_list
     num_agents = len(id_list)
