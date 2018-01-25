@@ -132,7 +132,7 @@ class DQNAgents:
                     #agent.recent_states.clear()
                     for recent_states in agent.recent_states_map:
                         recent_states.clear()  # reset the recent states buffer
-                    
+
                     # add states to recent states
                     #agent.recent_states.append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
                     agent.recent_states_map[self.steps % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state[agent.index]))
@@ -265,7 +265,7 @@ class DQNAgents:
                     recent_states.clear()  # reset the recent states buffer
                 # add states to recent states
                 #agent.recent_states_test.append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
-                agent.recent_states_test_map[test_episode_steps % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state[int(agent.index)]))
+                agent.recent_states_test_map[test_episode_steps % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state[agent.index]))
 
             episode_reward = np.zeros(len(self.agents))
             while True:
