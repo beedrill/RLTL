@@ -1,25 +1,20 @@
 # -*- coding: utf-8 -*-
-"""
-@file    __init__.py
-@author  Michael Behrisch
-@author  Lena Kalleske
-@author  Mario Krumnow
-@author  Daniel Krajzewicz
-@author  Jakob Erdmann
-@date    2008-10-09
-@version $Id: __init__.py 23953 2017-04-16 16:19:38Z behrisch $
+# Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
+# Copyright (C) 2008-2017 German Aerospace Center (DLR) and others.
+# This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v2.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v20.html
 
-Python implementation of the TraCI interface.
+# @file    __init__.py
+# @author  Michael Behrisch
+# @author  Lena Kalleske
+# @author  Mario Krumnow
+# @author  Daniel Krajzewicz
+# @author  Jakob Erdmann
+# @date    2008-10-09
+# @version $Id$
 
-SUMO, Simulation of Urban MObility; see http://sumo.dlr.de/
-Copyright (C) 2008-2017 DLR (http://www.dlr.de/) and contributors
-
-This file is part of SUMO.
-SUMO is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
-"""
 from __future__ import print_function
 from __future__ import absolute_import
 import socket
@@ -28,11 +23,13 @@ import subprocess
 import warnings
 import abc
 
-import sumolib
+import sumolib  # noqa
+from sumolib.miscutils import getFreeSocketPort
+
 from .domain import _defaultDomains
 from .connection import Connection, _embedded
 from .exceptions import FatalTraCIError, TraCIException
-from . import _inductionloop, _lanearea, _multientryexit, _trafficlights
+from . import _inductionloop, _lanearea, _multientryexit, _trafficlight
 from . import _lane, _vehicle, _vehicletype, _person, _route
 from . import _poi, _polygon, _junction, _edge, _simulation, _gui
 
@@ -61,7 +58,7 @@ def connect(port=8813, numRetries=10, host="localhost", proc=None):
             if wait < numRetries + 1:
                 print(" Retrying in %s seconds" % wait)
                 time.sleep(wait)
-    raise FatalTraCIError(str(e))
+    raise FatalTraCIError("Could not connect in %s tries" % (numRetries + 1))
 
 
 def init(port=8813, numRetries=10, host="localhost", label="default"):
@@ -93,8 +90,11 @@ def isEmbedded():
 
 
 def load(args):
-    """
-    Let sumo load a simulation using the given command line like options.
+    """load([optionOrParam, ...])
+    Let sumo load a simulation using the given command line like options 
+    Example:
+      load(['-c', 'run.sumocfg'])
+      load(['-n', 'net.net.xml', '-r', 'routes.rou.xml'])
     """
     return _connections[""].load(args)
 
@@ -119,7 +119,7 @@ class StepListener(object):
     def step(self, s=0):
         """step(int) -> None
 
-        After adding a StepListener 'listener' with traci.addStepListener(listener), 
+        After adding a StepListener 'listener' with traci.addStepListener(listener),
         TraCI will call listener.step(s) after each call to traci.simulationStep(s)
         """
         pass
@@ -139,8 +139,26 @@ def addStepListener(listener):
     return False
 
 
+def removeStepListener(listener):
+    """removeStepListener(traci.StepListener) -> bool
+
+    Remove the step listener from traci's step listener container.
+    Returns True if the listener was removed successfully, False if it wasn't registered.
+    """
+    if listener in _stepListeners:
+        _stepListeners.remove(listener)
+        return True
+    warnings.warn(
+        "removeStepListener(listener): listener %s not registered as step listener" % str(listener))
+    return False
+
+
 def getVersion():
     return _connections[""].getVersion()
+
+
+def setOrder(order):
+    return _connections[""].setOrder(order)
 
 
 def close(wait=True):
@@ -152,6 +170,10 @@ def switch(label):
     for domain in _defaultDomains:
         domain._setConnection(_connections[""])
 
+def getConnection(label ="default"):
+    if not label in _connections:
+        raise TraCIException("connection with label '%s' is not known")
+    return _connections[label]
 
 if _embedded:
     # create the default dummy connection

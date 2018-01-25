@@ -1,25 +1,20 @@
 # -*- coding: utf-8 -*-
-"""
-@file    connection.py
-@author  Michael Behrisch
-@author  Lena Kalleske
-@author  Mario Krumnow
-@author  Daniel Krajzewicz
-@author  Jakob Erdmann
-@date    2008-10-09
-@version $Id: connection.py 24028 2017-04-24 05:10:18Z behrisch $
+# Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
+# Copyright (C) 2008-2017 German Aerospace Center (DLR) and others.
+# This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v2.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v20.html
 
-Python implementation of the TraCI interface.
+# @file    connection.py
+# @author  Michael Behrisch
+# @author  Lena Kalleske
+# @author  Mario Krumnow
+# @author  Daniel Krajzewicz
+# @author  Jakob Erdmann
+# @date    2008-10-09
+# @version $Id$
 
-SUMO, Simulation of Urban MObility; see http://sumo.dlr.de/
-Copyright (C) 2008-2017 DLR (http://www.dlr.de/) and contributors
-
-This file is part of SUMO.
-SUMO is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
-"""
 from __future__ import print_function
 from __future__ import absolute_import
 import socket
@@ -139,7 +134,7 @@ class Connection:
         self._beginMessage(cmdID, varID, objID, 1 + 8)
         self._string += struct.pack("!Bd", tc.TYPE_DOUBLE, value)
         self._sendExact()
-
+        
     def _sendByteCmd(self, cmdID, varID, objID, value):
         self._beginMessage(cmdID, varID, objID, 1 + 1)
         self._string += struct.pack("!BB", tc.TYPE_BYTE, value)
@@ -168,7 +163,7 @@ class Connection:
 
     def _readSubscription(self, result):
         # to enable this you also need to set _DEBUG to True in storage.py
-        result.printDebug()
+        # result.printDebug()
         result.readLength()
         response = result.read("!B")[0]
         isVariableSubscription = response >= tc.RESPONSE_SUBSCRIBE_INDUCTIONLOOP_VARIABLE and response <= tc.RESPONSE_SUBSCRIBE_PERSON_VARIABLE
@@ -264,7 +259,7 @@ class Connection:
         Load a simulation from the given arguments.
         """
         self._queue.append(tc.CMD_LOAD)
-        self._string += struct.pack("!BB", 1 + 1 + 1 + 4 + sum(map(len, args)) + 4 * len(args), tc.CMD_LOAD)
+        self._string += struct.pack("!BiB", 0, 1 + 4 + 1 + 1 + 4 + sum(map(len, args)) + 4 * len(args), tc.CMD_LOAD)
         self._packStringList(args)
         self._sendExact()
 
@@ -299,12 +294,18 @@ class Connection:
                 "Received answer %s for command %s." % (response, command))
         return result.readInt(), result.readString()
 
+    def setOrder(self, order):
+        self._queue.append(tc.CMD_SETORDER)
+        self._string += struct.pack("!BBi", 1 + 1 + 4, tc.CMD_SETORDER, order)
+        self._sendExact()
+
     def close(self, wait=True):
         if not _embedded:
-            self._queue.append(tc.CMD_CLOSE)
-            self._string += struct.pack("!BB", 1 + 1, tc.CMD_CLOSE)
-            self._sendExact()
-            self._socket.close()
-            del self._socket
+            if hasattr(self, "_socket"):
+                self._queue.append(tc.CMD_CLOSE)
+                self._string += struct.pack("!BB", 1 + 1, tc.CMD_CLOSE)
+                self._sendExact()
+                self._socket.close()
+                del self._socket
             if wait and self._process is not None:
                 self._process.wait()

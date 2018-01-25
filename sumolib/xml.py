@@ -1,22 +1,17 @@
 # -*- coding: utf-8 -*-
-"""
-@file    xml.py
-@author  Michael Behrisch
-@author  Jakob Erdmann
-@date    2011-06-23
-@version $Id: xml.py 23999 2017-04-21 09:04:47Z behrisch $
+# Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
+# Copyright (C) 2011-2017 German Aerospace Center (DLR) and others.
+# This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v2.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v20.html
 
-Python interface to SUMO especially for parsing output files.
+# @file    xml.py
+# @author  Michael Behrisch
+# @author  Jakob Erdmann
+# @date    2011-06-23
+# @version $Id$
 
-SUMO, Simulation of Urban MObility; see http://sumo.dlr.de/
-Copyright (C) 2011-2017 DLR (http://www.dlr.de/) and contributors
-
-This file is part of SUMO.
-SUMO is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
-"""
 from __future__ import print_function
 from __future__ import absolute_import
 import sys
@@ -25,7 +20,6 @@ import xml.etree.cElementTree as ET
 from collections import namedtuple, OrderedDict
 from keyword import iskeyword
 from functools import reduce
-from .miscutils import benchmark
 
 
 def _prefix_keyword(name, warn=False):
@@ -38,6 +32,12 @@ def _prefix_keyword(name, warn=False):
         if warn:
             print("Warning: Renaming attribute '%s' to '%s' because it contains illegal characters" % (
                 name, result), file=sys.stderr)
+    if name == "name":
+        result = 'attr_name'
+        if warn:
+            print("Warning: Renaming attribute '%s' to '%s' because it conflicts with a reserved field" % (
+                name, result), file=sys.stderr)
+
     if iskeyword(name):
         result = 'attr_' + name
         if warn:
@@ -66,6 +66,11 @@ def compound_object(element_name, attrnames, warn=False):
         def hasAttribute(self, name):
             return name in self._fields
 
+        def getAttribute(self, name):
+            if self.hasAttribute(name):
+                return self.__dict__[name]
+            raise AttributeError
+
         def setAttribute(self, name, value):
             if name not in self._fields:
                 self._original_fields.append(name)
@@ -82,7 +87,7 @@ def compound_object(element_name, attrnames, warn=False):
             if attrs is None:
                 attrs = {}
             clazz = compound_object(name, attrs.keys())
-            child = clazz([attrs.get(a) for a in attrs.keys()], _NO_CHILDREN)
+            child = clazz([attrs.get(a) for a in sorted(attrs.keys())], _NO_CHILDREN)
             if len(self._child_dict) == 0:
                 self._child_dict = OrderedDict()
             self._child_dict.setdefault(name, []).append(child)
@@ -115,8 +120,10 @@ def compound_object(element_name, attrnames, warn=False):
             return "<%s,child_dict=%s>" % (self.getAttributes(), dict(self._child_dict))
 
         def toXML(self, initialIndent="", indent="    "):
-            fields = ['%s="%s"' % (self._original_fields[i], getattr(self, k))
-                      for i, k in enumerate(self._fields) if getattr(self, k) is not None]
+            fields = ['%s="%s"' % (self._original_fields[i], str(getattr(self, k)))
+                      for i, k in enumerate(self._fields) if getattr(self, k) is not None 
+                      # see #3454
+                      and not '{' in self._original_fields[i]]
             if not self._child_dict:
                 return "%s<%s %s/>\n" % (initialIndent, element_name, " ".join(fields))
             else:
@@ -174,7 +181,7 @@ _IDENTITY = lambda x: x
 
 
 def _get_compound_object(node, elementTypes, element_name, element_attrs, attr_conversions, heterogeneous, warn):
-    if not element_name in elementTypes or heterogeneous:
+    if element_name not in elementTypes or heterogeneous:
         # initialized the compound_object type from the first encountered #
         # element
         attrnames = element_attrs.get(element_name, node.keys())
@@ -222,19 +229,26 @@ def average(elements, attrname):
         raise Exception("average of 0 elements is not defined")
 
 
-def parse_fast(xmlfile, element_name, attrnames, warn=False):
+def parse_fast(xmlfile, element_name, attrnames, warn=False, optional=False):
     """
     Parses the given attrnames from all elements with element_name
     @Note: The element must be on its own line and the attributes must appear in
     the given order.
     @Example: parse_fast('plain.edg.xml', 'edge', ['id', 'speed'])
     """
-    pattern = '.*'.join(['<%s' % element_name] +
-                        ['%s="([^"]*)"' % attr for attr in attrnames])
-    attrnames = [_prefix_keyword(a, warn) for a in attrnames]
-    Record = namedtuple(element_name, attrnames)
+    prefixedAttrnames = [_prefix_keyword(a, warn) for a in attrnames]
+    if optional:
+        pattern = ''.join(['<%s' % element_name] +
+                          ['(\\s+%s="(?P<%s>[^"]*?)")?' % a for a in zip(attrnames, prefixedAttrnames)])
+    else:
+        pattern = '.*'.join(['<%s' % element_name] +
+                            ['%s="([^"]*)"' % attr for attr in attrnames])
+    Record = namedtuple(element_name, prefixedAttrnames)
     reprog = re.compile(pattern)
     for line in open(xmlfile):
         m = reprog.search(line)
         if m:
-            yield Record(*m.groups())
+            if optional:
+                yield Record(**m.groupdict())
+            else:
+                yield Record(*m.groups())

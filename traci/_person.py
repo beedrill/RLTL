@@ -1,21 +1,16 @@
 # -*- coding: utf-8 -*-
-"""
-@file    person.py
-@author  Jakob Erdmann
-@date    2015-02-06
-@version $Id: _person.py 23179 2017-03-02 08:32:15Z behrisch $
+# Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
+# Copyright (C) 2011-2017 German Aerospace Center (DLR) and others.
+# This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v2.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v20.html
 
-Python implementation of the TraCI interface.
+# @file    _person.py
+# @author  Jakob Erdmann
+# @date    2015-02-06
+# @version $Id$
 
-SUMO, Simulation of Urban MObility; see http://sumo.dlr.de/
-Copyright (C) 2011-2017 DLR (http://www.dlr.de/) and contributors
-
-This file is part of SUMO.
-SUMO is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
-"""
 from __future__ import absolute_import
 import struct
 from .domain import Domain
@@ -224,16 +219,16 @@ class PersonDomain(Domain):
         self._connection._sendExact()
 
     def appendWaitingStage(self, personID, duration, description="waiting", stopID=""):
-        """appendWaitingStage(string, int, string, string)
+        """appendWaitingStage(string, float, string, string)
         Appends a waiting stage with duration in s to the plan of the given person
         """
         duration *= 1000
         self._connection._beginMessage(tc.CMD_SET_PERSON_VARIABLE, tc.APPEND_STAGE, personID,
-                                       1 + 4  # compound
-                                       + 1 + 4  # stage type
-                                       + 1 + 4  # duration
-                                       + 1 + 4 + len(description)
-                                       + 1 + 4 + len(stopID))
+                                       1 + 4 +  # compound
+                                       1 + 4 +  # stage type
+                                       1 + 4 +  # duration
+                                       1 + 4 + len(description) +
+                                       1 + 4 + len(stopID))
         self._connection._string += struct.pack("!Bi", tc.TYPE_COMPOUND, 4)
         self._connection._string += struct.pack(
             "!Bi", tc.TYPE_INTEGER, tc.STAGE_WAITING)
@@ -254,14 +249,14 @@ class PersonDomain(Domain):
         if isinstance(edges, str):
             edges = [edgeList]
         self._connection._beginMessage(tc.CMD_SET_PERSON_VARIABLE, tc.APPEND_STAGE, personID,
-                                       1 + 4  # compound
-                                       + 1 + 4  # stageType
-                                       + 1 + 4 + \
-                                       sum(map(len, edges)) + 4 * len(edges)
-                                       + 1 + 8  # arrivalPos
-                                       + 1 + 4  # duration
-                                       + 1 + 8  # speed
-                                       + 1 + 4 + len(stopID)
+                                       1 + 4 +  # compound
+                                       1 + 4 +  # stageType
+                                       1 + 4 + \
+                                       sum(map(len, edges)) + 4 * len(edges) +
+                                       1 + 8 +  # arrivalPos
+                                       1 + 4 +  # duration
+                                       1 + 8 +  # speed
+                                       1 + 4 + len(stopID)
                                        )
         self._connection._string += struct.pack("!Bi", tc.TYPE_COMPOUND, 6)
         self._connection._string += struct.pack(
@@ -281,11 +276,11 @@ class PersonDomain(Domain):
         The lines parameter should be a space-separated list of line ids
         """
         self._connection._beginMessage(tc.CMD_SET_PERSON_VARIABLE, tc.APPEND_STAGE, personID,
-                                       1 + 4  # compound
-                                       + 1 + 4  # stage type
-                                       + 1 + 4 + len(toEdge)
-                                       + 1 + 4 + len(lines)
-                                       + 1 + 4 + len(stopID))
+                                       1 + 4 +  # compound
+                                       1 + 4 +  # stage type
+                                       1 + 4 + len(toEdge) +
+                                       1 + 4 + len(lines) +
+                                       1 + 4 + len(stopID))
         self._connection._string += struct.pack("!Bi", tc.TYPE_COMPOUND, 4)
         self._connection._string += struct.pack(
             "!Bi", tc.TYPE_INTEGER, tc.STAGE_DRIVING)
@@ -304,6 +299,35 @@ class PersonDomain(Domain):
             tc.CMD_SET_PERSON_VARIABLE, tc.REMOVE_STAGE, personID, 1 + 4)
         self._connection._string += struct.pack("!Bi",
                                                 tc.TYPE_INTEGER, nextStageIndex)
+        self._connection._sendExact()
+
+    def rerouteTraveltime(self, personID):
+        """rerouteTraveltime(string) -> None Reroutes a pedestrian (walking person).
+        """
+        self._connection._beginMessage(
+            tc.CMD_SET_PERSON_VARIABLE, tc.CMD_REROUTE_TRAVELTIME, personID, 1 + 4)
+        self._connection._string += struct.pack("!Bi", tc.TYPE_COMPOUND, 0)
+        self._connection._sendExact()
+
+    def moveToXY(self, personID, edgeID, x, y, angle=tc.INVALID_DOUBLE_VALUE, keepRoute=1):
+        '''Place person at the given x,y coordinates and force it's angle to
+        the given value (for drawing).
+        If the angle is set to INVALID_DOUBLE_VALUE, the vehicle assumes the
+        natural angle of the edge on which it is driving.
+        If keepRoute is set to 1, the closest position
+        within the existing route is taken. If keepRoute is set to 0, the vehicle may move to
+        any edge in the network but it's route then only consists of that edge.
+        If keepRoute is set to 2 the person has all the freedom of keepRoute=0
+        but in addition to that may even move outside the road network.
+        edgeID is an optional placement hint to resolve ambiguities'''
+        self._connection._beginMessage(tc.CMD_SET_PERSON_VARIABLE, tc.MOVE_TO_XY,
+                                       personID, 1 + 4 + 1 + 4 + len(edgeID) + 1 + 8 + 1 + 8 + 1 + 8 + 1 + 1)
+        self._connection._string += struct.pack("!Bi", tc.TYPE_COMPOUND, 5)
+        self._connection._packString(edgeID)
+        self._connection._string += struct.pack("!Bd", tc.TYPE_DOUBLE, x)
+        self._connection._string += struct.pack("!Bd", tc.TYPE_DOUBLE, y)
+        self._connection._string += struct.pack("!Bd", tc.TYPE_DOUBLE, angle)
+        self._connection._string += struct.pack("!BB", tc.TYPE_BYTE, keepRoute)
         self._connection._sendExact()
 
     def setSpeed(self, personID, speed):

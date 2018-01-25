@@ -1,32 +1,30 @@
 # -*- coding: utf-8 -*-
-"""
-@file    vehicle.py
-@author  Michael Behrisch
-@author  Lena Kalleske
-@author  Mario Krumnow
-@author  Lena Kalleske
-@author  Jakob Erdmann
-@author  Laura Bieker
-@author  Daniel Krajzewicz
-@date    2011-03-09
-@version $Id: _vehicle.py 23953 2017-04-16 16:19:38Z behrisch $
+# Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
+# Copyright (C) 2011-2017 German Aerospace Center (DLR) and others.
+# This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v2.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v20.html
 
-Python implementation of the TraCI interface.
+# @file    _vehicle.py
+# @author  Michael Behrisch
+# @author  Lena Kalleske
+# @author  Mario Krumnow
+# @author  Lena Kalleske
+# @author  Jakob Erdmann
+# @author  Laura Bieker
+# @author  Daniel Krajzewicz
+# @date    2011-03-09
+# @version $Id$
 
-SUMO, Simulation of Urban MObility; see http://sumo.dlr.de/
-Copyright (C) 2011-2017 DLR (http://www.dlr.de/) and contributors
-
-This file is part of SUMO.
-SUMO is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
-"""
 from __future__ import absolute_import
 import struct
+import sys
+import warnings
 from .domain import Domain
 from .storage import Storage
 from . import constants as tc
+from . import exceptions
 
 
 def _readBestLanes(result):
@@ -104,6 +102,7 @@ _RETURN_VALUE_FUNC = {tc.VAR_SPEED: Storage.readDouble,
                       tc.VAR_SPEED_DEVIATION: Storage.readDouble,
                       tc.VAR_EMISSIONCLASS: Storage.readString,
                       tc.VAR_WAITING_TIME: Storage.readDouble,
+                      tc.VAR_ACCUMULATED_WAITING_TIME: Storage.readDouble,
                       tc.VAR_SPEEDSETMODE: Storage.readInt,
                       tc.VAR_SLOPE: Storage.readDouble,
                       tc.VAR_WIDTH: Storage.readDouble,
@@ -114,6 +113,10 @@ _RETURN_VALUE_FUNC = {tc.VAR_SPEED: Storage.readDouble,
                       tc.VAR_SHAPECLASS: Storage.readString,
                       tc.VAR_ACCEL: Storage.readDouble,
                       tc.VAR_DECEL: Storage.readDouble,
+                      tc.VAR_EMERGENCY_DECEL: Storage.readDouble,
+                      tc.VAR_APPARENT_DECEL: Storage.readDouble,
+                      tc.VAR_ACTIONSTEPLENGTH: Storage.readDouble,
+                      tc.VAR_LASTACTIONTIME: Storage.readDouble,
                       tc.VAR_IMPERFECTION: Storage.readDouble,
                       tc.VAR_TAU: Storage.readDouble,
                       tc.VAR_BEST_LANES: _readBestLanes,
@@ -422,7 +425,7 @@ class VehicleDomain(Domain):
     def getSpeedDeviation(self, vehID):
         """getSpeedDeviation(string) -> double
 
-        Returns the maximum speed deviation of the vehicle type.
+        Returns the standard deviation for the speed factor of the vehicle type.
         """
         return self._getUniversal(tc.VAR_SPEED_DEVIATION, vehID)
 
@@ -438,8 +441,16 @@ class VehicleDomain(Domain):
         The waiting time of a vehicle is defined as the time (in seconds) spent with a
         speed below 0.1m/s since the last time it was faster than 0.1m/s.
         (basically, the waiting time of a vehicle is reset to 0 every time it moves).
+        A vehicle that is stopping intentionally with a <stop> does not accumulate waiting time.
         """
         return self._getUniversal(tc.VAR_WAITING_TIME, vehID)
+
+    def getAccumulatedWaitingTime(self, vehID):
+        """getAccumulatedWaitingTime() -> double
+        The accumulated waiting time of a vehicle collects the vehicle's waiting time
+        over a certain time interval (interval length is set per option '--waiting-time-memory')
+        """
+        return self._getUniversal(tc.VAR_ACCUMULATED_WAITING_TIME, vehID)
 
     def getSpeedMode(self, vehID):
         """getSpeedMode -> int
@@ -505,10 +516,38 @@ class VehicleDomain(Domain):
     def getDecel(self, vehID):
         """getDecel(string) -> double
 
-        Returns the maximum deceleration possibility in m/s^2 of this vehicle.
+        Returns the preferred maximal deceleration possibility in m/s^2 of this vehicle.
         """
         return self._getUniversal(tc.VAR_DECEL, vehID)
 
+    def getEmergencyDecel(self, vehID):
+        """getEmergencyDecel(string) -> double
+
+        Returns the maximal physically possible deceleration in m/s^2 of this vehicle.
+        """
+        return self._getUniversal(tc.VAR_EMERGENCY_DECEL, vehID)
+
+    def getApparentDecel(self, vehID):
+        """getApparentDecel(string) -> double
+
+        Returns the apparent deceleration in m/s^2 of this vehicle.
+        """
+        return self._getUniversal(tc.VAR_APPARENT_DECEL, vehID)
+
+    def getActionStepLength(self, vehID):
+        """getActionStepLength(string) -> double
+
+        Returns the action step length for this vehicle.
+        """
+        return self._getUniversal(tc.VAR_ACTIONSTEPLENGTH, vehID)
+    
+    def getLastActionTime(self, vehID):
+        """getLastActionTime(string) -> double
+
+        Returns the time of last action poitn for this vehicle.
+        """
+        return self._getUniversal(tc.VAR_ACTIONSTEPLENGTH, vehID)
+    
     def getImperfection(self, vehID):
         """getImperfection(string) -> double
 
@@ -533,7 +572,9 @@ class VehicleDomain(Domain):
     def getLeader(self, vehID, dist=0.):
         """getLeader(string, double) -> (string, double)
 
-        Return the leading vehicle id together with the distance.
+        Return the leading vehicle id together with the distance. The distance
+        is measured from the front + minGap to the back of the leader, so it does not include the
+        minGap of the vehicle.
         The dist parameter defines the maximum lookahead, 0 calculates a lookahead from the brake gap.
         Note that the returned leader may be farther away than the given dist.
         """
@@ -558,7 +599,7 @@ class VehicleDomain(Domain):
         self._connection._subscribe(tc.CMD_SUBSCRIBE_VEHICLE_VARIABLE, begin, end, vehID,
                                     (tc.VAR_LEADER,), {tc.VAR_LEADER: struct.pack("!Bd", tc.TYPE_DOUBLE, dist)})
 
-    def getDrivingDistance(self, vehID, edgeID, pos, laneID=0):
+    def getDrivingDistance(self, vehID, edgeID, pos, laneIndex=0):
         """getDrivingDistance(string, string, double, integer) -> double
 
         Return the distance to the given edge and position along the vehicles route.
@@ -568,7 +609,7 @@ class VehicleDomain(Domain):
         self._connection._string += struct.pack("!Bi", tc.TYPE_COMPOUND, 2)
         self._connection._packString(edgeID, tc.POSITION_ROADMAP)
         self._connection._string += struct.pack("!dBB",
-                                                pos, laneID, tc.REQUEST_DRIVINGDIST)
+                                                pos, laneIndex, tc.REQUEST_DRIVINGDIST)
         return self._connection._checkResult(tc.CMD_GET_VEHICLE_VARIABLE, tc.DISTANCE_REQUEST, vehID).readDouble()
 
     def getDrivingDistance2D(self, vehID, x, y):
@@ -814,35 +855,81 @@ class VehicleDomain(Domain):
         self._connection._packStringList(edgeList)
         self._connection._sendExact()
 
-    def setAdaptedTraveltime(self, vehID, begTime, endTime, edgeID, time):
-        """setAdaptedTraveltime(string, double, string, double) -> None
-
+    def setAdaptedTraveltime(self, vehID, edgeID, time=None, begTime=None, endTime=None):
+        """setAdaptedTraveltime(string, string, double, int, int) -> None
         Inserts the information about the travel time of edge "edgeID" valid
         from begin time to end time into the vehicle's internal edge weights
-        container. .
+        container. 
+        If the time is not specified, any previously set values for that edge
+        are removed.
+        If begTime or endTime are not specified the value is set for the whole
+        simulation duration.
         """
-        self._connection._beginMessage(tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_EDGE_TRAVELTIME,
-                                       vehID, 1 + 4 + 1 + 4 + 1 + 4 + 1 + 4 + len(edgeID) + 1 + 8)
-        self._connection._string += struct.pack("!BiBiBi", tc.TYPE_COMPOUND, 4, tc.TYPE_INTEGER, begTime,
-                                                tc.TYPE_INTEGER, endTime)
-        self._connection._packString(edgeID)
-        self._connection._string += struct.pack("!Bd", tc.TYPE_DOUBLE, time)
-        self._connection._sendExact()
+        if type(edgeID) != str and type(begTime) == str: 
+            # legacy handling
+            warnings.warn("Parameter order has changed for setAdaptedTraveltime(). Attempting legacy ordering. Please update your code.", stacklevel=2)
+            return self.setAdaptedTraveltime(vehID, begTime, endTime, edgeID, time)
+        if time is None:
+            # reset
+            self._connection._beginMessage(tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_EDGE_TRAVELTIME,
+                                           vehID, 1 + 4 + 1 + 4 + len(edgeID))
+            self._connection._string += struct.pack("!Bi", tc.TYPE_COMPOUND, 1)
+            self._connection._packString(edgeID)
+            self._connection._sendExact()
+        elif begTime is None:
+            # set value for the whole simulation
+            self._connection._beginMessage(tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_EDGE_TRAVELTIME,
+                                           vehID, 1 + 4 + 1 + 4 + len(edgeID) + 1 + 8)
+            self._connection._string += struct.pack("!Bi", tc.TYPE_COMPOUND, 2)
+            self._connection._packString(edgeID)
+            self._connection._string += struct.pack("!Bd", tc.TYPE_DOUBLE, time)
+            self._connection._sendExact()
+        else:
+            self._connection._beginMessage(tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_EDGE_TRAVELTIME,
+                                           vehID, 1 + 4 + 1 + 4 + 1 + 4 + 1 + 4 + len(edgeID) + 1 + 8)
+            self._connection._string += struct.pack("!BiBiBi", tc.TYPE_COMPOUND, 4, tc.TYPE_INTEGER, begTime,
+                                                    tc.TYPE_INTEGER, endTime)
+            self._connection._packString(edgeID)
+            self._connection._string += struct.pack("!Bd", tc.TYPE_DOUBLE, time)
+            self._connection._sendExact()
 
-    def setEffort(self, vehID, begTime, endTime, edgeID, effort):
-        """setEffort(string, double, string, double) -> None
-
+    def setEffort(self, vehID, edgeID, effort=None, begTime=None, endTime=None):
+        """setEffort(string, string, double, int, int) -> None
         Inserts the information about the effort of edge "edgeID" valid from
         begin time to end time into the vehicle's internal edge weights
         container.
+        If the time is not specified, any previously set values for that edge
+        are removed.
+        If begTime or endTime are not specified the value is set for the whole
+        simulation duration.
         """
-        self._connection._beginMessage(tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_EDGE_EFFORT,
-                                       vehID, 1 + 4 + 1 + 4 + 1 + 4 + 1 + 4 + len(edgeID) + 1 + 4)
-        self._connection._string += struct.pack("!BiBiBi", tc.TYPE_COMPOUND, 4, tc.TYPE_INTEGER, begTime,
-                                                tc.TYPE_INTEGER, endTime)
-        self._connection._packString(edgeID)
-        self._connection._string += struct.pack("!Bd", tc.TYPE_DOUBLE, effort)
-        self._connection._sendExact()
+        if type(edgeID) != str and type(begTime) == str: 
+            # legacy handling
+            warnings.warn("Parameter order has changed for setEffort(). Attempting legacy ordering. Please update your code.", stacklevel=2)
+            return self.setEffort(vehID, begTime, endTime, edgeID, effort)
+        if effort is None:
+            # reset
+            self._connection._beginMessage(tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_EDGE_EFFORT,
+                                           vehID, 1 + 4 + 1 + 4 + len(edgeID))
+            self._connection._string += struct.pack("!Bi", tc.TYPE_COMPOUND, 1)
+            self._connection._packString(edgeID)
+            self._connection._sendExact()
+        elif begTime is None:
+            # set value for the whole simulation
+            self._connection._beginMessage(tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_EDGE_EFFORT,
+                                           vehID, 1 + 4 + 1 + 4 + len(edgeID) + 1 + 8)
+            self._connection._string += struct.pack("!Bi", tc.TYPE_COMPOUND, 2)
+            self._connection._packString(edgeID)
+            self._connection._string += struct.pack("!Bd", tc.TYPE_DOUBLE, effort)
+            self._connection._sendExact()
+        else:
+            self._connection._beginMessage(tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_EDGE_EFFORT,
+                                           vehID, 1 + 4 + 1 + 4 + 1 + 4 + 1 + 4 + len(edgeID) + 1 + 8)
+            self._connection._string += struct.pack("!BiBiBi", tc.TYPE_COMPOUND, 4, tc.TYPE_INTEGER, begTime,
+                                                    tc.TYPE_INTEGER, endTime)
+            self._connection._packString(edgeID)
+            self._connection._string += struct.pack("!Bd", tc.TYPE_DOUBLE, effort)
+            self._connection._sendExact()
 
     LAST_TRAVEL_TIME_UPDATE = -1
 
@@ -853,7 +940,7 @@ class VehicleDomain(Domain):
         custom travel times are used. The various functions and options for
         customizing travel times are described at http://sumo.dlr.de/wiki/Simulation/Routing
 
-        When rerouteTravelTime has been called once with option
+        When rerouteTraveltime has been called once with option
         currentTravelTimes=True, all edge weights are set to the current travel
         times at the time of that call (even for subsequent simulation steps).
         """
@@ -1026,11 +1113,43 @@ class VehicleDomain(Domain):
     def setDecel(self, vehID, decel):
         """setDecel(string, double) -> None
 
-        Sets the maximum deceleration in m/s^2 for this vehicle.
+        Sets the preferred maximal deceleration in m/s^2 for this vehicle.
         """
         self._connection._sendDoubleCmd(
             tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_DECEL, vehID, decel)
 
+    def setEmergencyDecel(self, vehID, decel):
+        """setEmergencyDecel(string, double) -> None
+
+        Sets the maximal physically possible deceleration in m/s^2 for this vehicle.
+        """
+        self._connection._sendDoubleCmd(
+            tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_EMERGENCY_DECEL, vehID, decel)
+
+    def setApparentDecel(self, vehID, decel):
+        """setApparentDecel(string, double) -> None
+
+        Sets the apparent deceleration in m/s^2 for this vehicle.
+        """
+        self._connection._sendDoubleCmd(
+            tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_APPARENT_DECEL, vehID, decel)
+
+    def setActionStepLength(self, vehID, actionStepLength, resetActionOffset = True):
+        """setActionStepLength(string, double, bool) -> None
+
+        Sets the action step length for this vehicle. If resetActionOffset == True (default), the 
+        next action point is scheduled immediately. if If resetActionOffset == False, the interval 
+        between the last and the next action point is updated to match the given value, or if the latter
+        is smaller than the time since the last action point, the next action follows immediately.
+        """
+        if actionStepLength < 0:
+            raise exceptions.TraCIException("Invalid value for actionStepLength. Given value must be non-negative.")
+        # Use negative value to indicate resetActionOffset == False
+        if not resetActionOffset:
+            actionStepLength*=-1
+        self._connection._sendDoubleCmd(
+            tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_ACTIONSTEPLENGTH, vehID, actionStepLength)
+        
     def setImperfection(self, vehID, imperfection):
         """setImperfection(string, double) -> None
 
@@ -1042,7 +1161,7 @@ class VehicleDomain(Domain):
     def setTau(self, vehID, tau):
         """setTau(string, double) -> None
 
-        Sets the driver's reaction time in s for this vehicle.
+        Sets the driver's tau-parameter (reaction time or anticipation time depending on the car-following model) in s for this vehicle.
         """
         self._connection._sendDoubleCmd(
             tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_TAU, vehID, tau)
@@ -1111,7 +1230,7 @@ class VehicleDomain(Domain):
 
     def moveToXY(self, vehID, edgeID, lane, x, y, angle=tc.INVALID_DOUBLE_VALUE, keepRoute=1):
         '''Place vehicle at the given x,y coordinates and force it's angle to
-        the given value (for drawing). 
+        the given value (for drawing).
         If the angle is set to INVALID_DOUBLE_VALUE, the vehicle assumes the
         natural angle of the edge on which it is driving.
         If keepRoute is set to 1, the closest position
@@ -1119,7 +1238,7 @@ class VehicleDomain(Domain):
         any edge in the network but it's route then only consists of that edge.
         If keepRoute is set to 2 the vehicle has all the freedom of keepRoute=0
         but in addition to that may even move outside the road network.
-        edgeID and lane are optional placement hints to resovle ambiguities'''
+        edgeID and lane are optional placement hints to resolve ambiguities'''
         self._connection._beginMessage(tc.CMD_SET_VEHICLE_VARIABLE, tc.MOVE_TO_XY,
                                        vehID, 1 + 4 + 1 + 4 + len(edgeID) + 1 + 4 + 1 + 8 + 1 + 8 + 1 + 8 + 1 + 1)
         self._connection._string += struct.pack("!Bi", tc.TYPE_COMPOUND, 6)

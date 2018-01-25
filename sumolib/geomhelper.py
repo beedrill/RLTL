@@ -1,22 +1,17 @@
-"""
-@file    geomhelper.py
-@author  Daniel Krajzewicz
-@author  Jakob Erdmann
-@author  Michael Behrisch
-@date    2013-02-25
-@version $Id: geomhelper.py 22608 2017-01-17 06:28:54Z behrisch $
+# Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
+# Copyright (C) 2013-2017 German Aerospace Center (DLR) and others.
+# This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v2.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v20.html
 
-Some helper functions for geometrical computations.
+# @file    geomhelper.py
+# @author  Daniel Krajzewicz
+# @author  Jakob Erdmann
+# @author  Michael Behrisch
+# @date    2013-02-25
+# @version $Id$
 
-SUMO, Simulation of Urban MObility; see http://sumo.dlr.de/
-Copyright (C) 2013-2017 DLR (http://www.dlr.de/) and contributors
-
-This file is part of SUMO.
-SUMO is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
-"""
 from __future__ import absolute_import
 import math
 
@@ -51,7 +46,7 @@ def lineOffsetWithMinimumDistanceToPoint(point, line_start, line_end, perpendicu
 
 
 def polygonOffsetAndDistanceToPoint(point, polygon, perpendicular=False):
-    """Return the offset and the distancefrom the polygon start where the distance to point is minimal"""
+    """Return the offset and the distance from the polygon start where the distance to the point is minimal"""
     p = point
     s = polygon
     seen = 0
@@ -82,7 +77,7 @@ def polygonOffsetAndDistanceToPoint(point, polygon, perpendicular=False):
 
 
 def polygonOffsetWithMinimumDistanceToPoint(point, polygon, perpendicular=False):
-    """Return the offset from the polygon start where the distance to point is minimal"""
+    """Return the offset from the polygon start where the distance to the point is minimal"""
     return polygonOffsetAndDistanceToPoint(point, polygon, perpendicular)[0]
 
 
@@ -121,6 +116,8 @@ def distancePointToPolygon(point, polygon, perpendicular=False):
 
 
 def positionAtOffset(p1, p2, offset):
+    if offset == 0.:  # for pathological cases with dist == 0 and offset == 0
+        return p1
     dist = distance(p1, p2)
     if dist < offset:
         return None
