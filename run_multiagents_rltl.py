@@ -211,9 +211,11 @@ def main():
     # print 'num_actions', num_actions
     
     # memory grows as it requires
-    config = tf.ConfigProto(allow_soft_placement=True)
+    
     #config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
+    #This will assign the computation to CPU automatically whenever GPU is not available    
+    config = tf.ConfigProto(allow_soft_placement=True)
     sess = tf.Session(config=config)
     K.set_session(sess)
     
