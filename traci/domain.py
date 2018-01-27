@@ -1,25 +1,20 @@
 # -*- coding: utf-8 -*-
-"""
-@file    domain.py
-@author  Michael Behrisch
-@author  Lena Kalleske
-@author  Mario Krumnow
-@author  Daniel Krajzewicz
-@author  Jakob Erdmann
-@date    2008-10-09
-@version $Id: domain.py 23504 2017-03-17 11:21:32Z luecken $
+# Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
+# Copyright (C) 2008-2017 German Aerospace Center (DLR) and others.
+# This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v2.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v20.html
 
-Python implementation of the TraCI interface.
+# @file    domain.py
+# @author  Michael Behrisch
+# @author  Lena Kalleske
+# @author  Mario Krumnow
+# @author  Daniel Krajzewicz
+# @author  Jakob Erdmann
+# @date    2008-10-09
+# @version $Id$
 
-SUMO, Simulation of Urban MObility; see http://sumo.dlr.de/
-Copyright (C) 2008-2017 DLR (http://www.dlr.de/) and contributors
-
-This file is part of SUMO.
-SUMO is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
-"""
 from __future__ import print_function
 from __future__ import absolute_import
 import copy
@@ -29,6 +24,7 @@ import warnings
 import traci
 from . import constants as tc
 from .storage import Storage
+from .exceptions import FatalTraCIError
 
 _defaultDomains = []
 
@@ -41,7 +37,7 @@ class SubscriptionResults:
         self._valueFunc = valueFunc
 
     def _parse(self, varID, data):
-        if not varID in self._valueFunc:
+        if varID not in self._valueFunc:
             raise FatalTraCIError("Unknown variable %02x." % varID)
         return self._valueFunc[varID](data)
 

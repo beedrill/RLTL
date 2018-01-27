@@ -1,27 +1,23 @@
-"""
-@file    ns2.py
-@author  Daniel Krajzewicz
-@author  Jakob Erdmann
-@author  Michael Behrisch
-@date    2013-01-15
-@version $Id: ns2.py 22608 2017-01-17 06:28:54Z behrisch $
+# Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
+# Copyright (C) 2013-2017 German Aerospace Center (DLR) and others.
+# This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v2.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v20.html
 
+# @file    ns2.py
+# @author  Daniel Krajzewicz
+# @author  Jakob Erdmann
+# @author  Michael Behrisch
+# @date    2013-01-15
+# @version $Id$
+
+"""
 This module includes functions for converting SUMO's fcd-output into
 data files read by ns2.
-
-SUMO, Simulation of Urban MObility; see http://sumo.dlr.de/
-Copyright (C) 2013-2017 DLR (http://www.dlr.de/) and contributors
-
-This file is part of SUMO.
-SUMO is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
 """
 from __future__ import print_function
 from __future__ import absolute_import
-import math
-import datetime
 import sumolib.output
 import sumolib.net
 
