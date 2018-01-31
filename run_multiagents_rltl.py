@@ -171,15 +171,15 @@ def main():
         import pysumo
         env = Simulator(episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/2-intersections/traffic.net.xml',
-                        route_file='map/2-intersections/traffic.rou.xml')
+                        map_file='map/5-intersections/traffic.net.xml',
+                        route_file='map/5-intersections/traffic.rou.xml')
     else:
         import traci
         env = Simulator(visual=True,
                         episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/2-intersections/traffic.net.xml',
-                        route_file='map/2-intersections/traffic.rou.xml')
+                        map_file='map/5-intersections/traffic.net.xml',
+                        route_file='map/5-intersections/traffic.rou.xml')
         
     id_list = env.tl_id_list
     num_agents = len(id_list)
