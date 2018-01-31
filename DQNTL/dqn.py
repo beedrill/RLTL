@@ -11,6 +11,8 @@ from DQNTL.policy import UniformRandomPolicy, GreedyEpsilonPolicy, GreedyPolicy
 from keras.layers import Input, Lambda, Dense, concatenate
 import keras.backend as K
 
+import pdb ##remove aster debug
+
 
 class DQNAgents:
     def __init__(self,
@@ -124,7 +126,7 @@ class DQNAgents:
         test_eval_steps = 5
         min_reward = float('inf')
         while self.steps < num_iterations:
-            
+            #pdb.set_trace()#
             if state is None:  # beginning of an episode
                 state = self.reset_environment(env)
                 for agent in self.agents:
@@ -669,7 +671,7 @@ class DQNAgent:
         test_eval_steps = 5
         min_reward = float('inf')
         while self.steps < num_iterations:
-            
+            #pdb.set_trace()
             if state is None:  # beginning of an episode
                 state = self.reset_environment(env)
                 for recent_states in self.recent_states_map:
