@@ -1,22 +1,17 @@
-"""
-@file    helpers.py
-@author  Daniel Krajzewicz
-@author  Laura Bieker
-@author  Michael Behrisch
-@date    2013-11-11
-@version $Id: helpers.py 23247 2017-03-07 13:46:58Z behrisch $
+# Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
+# Copyright (C) 2013-2017 German Aerospace Center (DLR) and others.
+# This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v2.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v20.html
 
-Helper methods for plotting
+# @file    helpers.py
+# @author  Daniel Krajzewicz
+# @author  Laura Bieker
+# @author  Michael Behrisch
+# @date    2013-11-11
+# @version $Id$
 
-SUMO, Simulation of Urban MObility; see http://sumo.dlr.de/
-Copyright (C) 2013-2017 DLR (http://www.dlr.de/) and contributors
-
-This file is part of SUMO.
-SUMO is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
-"""
 from __future__ import absolute_import
 from __future__ import print_function
 
@@ -26,6 +21,7 @@ if 'TEXTTEST_SANDBOX' in os.environ or (os.name == 'posix' and 'DISPLAY' not in 
     matplotlib.use('Agg')
 from pylab import *
 from matplotlib.ticker import FuncFormatter as ff
+from matplotlib.collections import LineCollection
 import gc
 
 # http://datadebrief.blogspot.de/2010/10/plotting-sunrise-sunset-times-in-python.html
@@ -185,21 +181,26 @@ def applyPlotOptions(fig, ax, options):
 
 
 def plotNet(net, colors, widths, options):
+    shapes = []
+    c = []
+    w = []
     for e in net._edges:
-        gx = []
-        gy = []
-        for s in e.getShape():
-            gx.append(s[0])
-            gy.append(s[1])
+        shapes.append(e.getShape())
         if e._id in colors:
-            c = colors[str(e._id)]
+            c.append(colors[str(e._id)])
         else:
-            c = options.defaultColor
+            c.append(options.defaultColor)
         if e._id in widths:
-            w = widths[str(e._id)]
+            w.append(widths[str(e._id)])
         else:
-            w = options.defaultWidth
-        plot(gx, gy, color=c, linewidth=w)
+            w.append(options.defaultWidth)
+
+    line_segments = LineCollection(shapes, linewidths=w, colors=c)
+    ax = plt.gca()
+    ax.add_collection(line_segments)
+    ax.set_xmargin(0.1)
+    ax.set_ymargin(0.1)
+    ax.autoscale_view(True, True, True)
 
 
 def getColor(options, i, a):
@@ -214,7 +215,7 @@ def getColor(options, i, a):
         cm.register_cmap(name="CUSTOM", cmap=colormap)
         options.colormap = "CUSTOM"
     colormap = get_cmap(options.colormap)
-    # cm = options.colormap#get_cmap(options.colormap)
+    # cm = options.colormap# get_cmap(options.colormap)
     cNorm = matplotlib.colors.Normalize(vmin=0, vmax=a)
     scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=colormap)
     return scalarMap.to_rgba(i)
@@ -321,12 +322,12 @@ def parseColorMap(mapDef):
         r = color[1:3]
         g = color[3:5]
         b = color[5:7]
-        #ret.append( (float(value), ( toFloat(r), toFloat(g), toFloat(b) ) ) )
+        # ret.append( (float(value), ( toFloat(r), toFloat(g), toFloat(b) ) ) )
         ret["red"].append((value, toFloat(r) / 255., toFloat(r) / 255.))
         ret["green"].append((value, toFloat(g) / 255., toFloat(g) / 255.))
         ret["blue"].append((value, toFloat(b) / 255., toFloat(b) / 255.))
 
         lastValue = value
-        #ret.append( (value, color) )
+        # ret.append( (value, color) )
     colormap = matplotlib.colors.LinearSegmentedColormap("CUSTOM", ret, 1024)
     return colormap

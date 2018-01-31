@@ -134,7 +134,7 @@ class DQNAgents:
                     #agent.recent_states.clear()
                     for recent_states in agent.recent_states_map:
                         recent_states.clear()  # reset the recent states buffer
-                    
+
                     # add states to recent states
                     #agent.recent_states.append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
                     agent.recent_states_map[self.steps % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state[agent.index]))
@@ -151,6 +151,10 @@ class DQNAgents:
 
             # this is required because it is 1 x traffic state size
             next_state = np.expand_dims(next_state, axis=1)
+            
+            #print next_state
+            #for agent in self.agents:
+               # print agent.index, agent.name
 
             # if type(next_state) is not np.ndarray:
             #     print 'wrong'
@@ -166,6 +170,7 @@ class DQNAgents:
                 terminal)
             
             state = next_state
+            
 
             episode_reward += reward
 
@@ -267,7 +272,7 @@ class DQNAgents:
                     recent_states.clear()  # reset the recent states buffer
                 # add states to recent states
                 #agent.recent_states_test.append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
-                agent.recent_states_test_map[test_episode_steps % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state[int(agent.index)]))
+                agent.recent_states_test_map[test_episode_steps % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state[agent.index]))
 
             episode_reward = np.zeros(len(self.agents))
             while True:
@@ -716,6 +721,7 @@ class DQNAgent:
                 terminal)
             
             state = next_state
+            
             
             # add states to recent states
             #self.recent_states.append(self.preprocessor.process_state_for_memory(state))

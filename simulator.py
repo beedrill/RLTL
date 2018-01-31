@@ -92,9 +92,11 @@ class Simulator():
             #print 'lane list', lane_list
             if l.startswith(':'):
                 continue
-            self.lane_list[l] = Lane(l,self,penetration_rate=self.penetration_rate)
+            self.lane_list[l] = Lane(l,self,penetration_rate=self.penetration_rate, length = traci.lane.getLength(l))
             #print 'lane list', l
+
         #print len(self.lane_list.keys())
+
         traci.close()
     def _simulation_start(self):
         if self.visual == False:
@@ -303,7 +305,8 @@ class Vehicle():
     def _update_appearance(self):
         if self.simulator.visual:
             if self.equipped:
-                traci.vehicle.setColor(self.id,(255,0,0,0))
+                #traci.vehicle.setColor(self.id,(255,0,0,0))
+                return
     
     def step(self):
         self._update_appearance()
@@ -366,19 +369,20 @@ class SimpleTrafficLight(TrafficLight):
         sim = self.simulator
         self.reward = 0
         
-        car_normalizing_number = 5.
+        car_normalizing_number = 1.
 
         # Traffic State 1
         for i in range(0, 4):
             self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number/car_normalizing_number
-            temp = 252
+            temp = sim.lane_list[lane_list[i]].length
             for vid in sim.lane_list[lane_list[i]].vehicle_list:
                 v = sim.veh_list[vid]
                 if v.equipped == False:
                     continue
                 if v.lane_position < temp and v.equipped:
                     temp = sim.veh_list[vid].lane_position
-            self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
+            #self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
+            self.traffic_state[i+4] = temp
             self.reward += sim.lane_list[lane_list[i]].lane_reward
         self.traffic_state[8] = self.current_phase_time/float(self.max_time)
         if self.current_phase in [0,1]:

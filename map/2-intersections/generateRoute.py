@@ -65,3 +65,4 @@ if __name__=="__main__":
     row = 3
     name = 'traffic'
     create_route(col,row,name, ns_p = 0.02, sn_p = 0.02, ew_p = 0.1, we_p = 0.1)
+

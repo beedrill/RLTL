@@ -1,28 +1,23 @@
 # -*- coding: utf-8 -*-
-"""
-@file    edge.py
-@author  Michael Behrisch
-@author  Jakob Erdmann
-@date    2011-03-17
-@version $Id: _edge.py 23179 2017-03-02 08:32:15Z behrisch $
+# Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
+# Copyright (C) 2011-2017 German Aerospace Center (DLR) and others.
+# This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v2.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v20.html
 
-Python implementation of the TraCI interface.
+# @file    _edge.py
+# @author  Michael Behrisch
+# @author  Jakob Erdmann
+# @date    2011-03-17
+# @version $Id$
 
-SUMO, Simulation of Urban MObility; see http://sumo.dlr.de/
-Copyright (C) 2011-2017 DLR (http://www.dlr.de/) and contributors
-
-This file is part of SUMO.
-SUMO is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
-"""
 from __future__ import absolute_import
 import struct
 from . import constants as tc
 from .domain import Domain
 from .storage import Storage
-from . import exceptions
+from .exceptions import *
 
 
 def _TIME2STEPS(time):
@@ -207,12 +202,12 @@ class EdgeDomain(Domain):
         return self._getUniversal(tc.LAST_STEP_PERSON_ID_LIST, edgeID)
 
     def adaptTraveltime(self, edgeID, time, begin=None, end=None):
-        """adaptTraveltime(string, double) -> None
+        """adaptTraveltime(string, double, int, int) -> None
 
         Adapt the travel time value (in s) used for (re-)routing for the given edge.
 
         When setting begin time and end time (in seconds), the changes only
-        apply to that time range
+        apply to that time range. Otherwise they apply all the time
         """
         if begin is None and end is None:
             self._connection._beginMessage(
@@ -234,12 +229,12 @@ class EdgeDomain(Domain):
                 "Both, begin time and end time must be specified")
 
     def setEffort(self, edgeID, effort, begin=None, end=None):
-        """setEffort(string, double) -> None
+        """setEffort(string, double, int, int) -> None
 
         Adapt the effort value used for (re-)routing for the given edge.
 
         When setting begin time and end time (in seconds), the changes only
-        apply to that time range
+        apply to that time range. Otherwise they apply all the time.
         """
         if begin is None and end is None:
             self._connection._beginMessage(

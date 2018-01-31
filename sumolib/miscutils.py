@@ -1,21 +1,16 @@
-"""
-@file    miscutils.py
-@author  Jakob Erdmann
-@author  Michael Behrisch
-@date    2012-05-08
-@version $Id: miscutils.py 23999 2017-04-21 09:04:47Z behrisch $
+# Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
+# Copyright (C) 2012-2017 German Aerospace Center (DLR) and others.
+# This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v2.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v20.html
 
-Common utility functions
+# @file    miscutils.py
+# @author  Jakob Erdmann
+# @author  Michael Behrisch
+# @date    2012-05-08
+# @version $Id$
 
-SUMO, Simulation of Urban MObility; see http://sumo.dlr.de/
-Copyright (C) 2012-2016 DLR (http://www.dlr.de/) and contributors
-
-This file is part of SUMO.
-SUMO is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
-"""
 from __future__ import absolute_import
 from __future__ import print_function
 import sys
@@ -28,8 +23,8 @@ import random
 from collections import defaultdict
 
 # append import path stanca:
-#THIS_DIR == os.path.basename(__file__)
-#sys.path.append(os.path.join(THIS_DIR, 'foo', 'bar'))
+# THIS_DIR == os.path.basename(__file__)
+# sys.path.append(os.path.join(THIS_DIR, 'foo', 'bar'))
 
 # http://www.python.org/dev/peps/pep-0326/
 
@@ -285,8 +280,15 @@ def getFreeSocketPort(numTries=10):
             pass
     return None
 
+
+def getSocketStream(port, mode='rb'):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(("localhost", port))
+    s.listen(1)
+    conn, addr = s.accept()
+    return conn.makefile(mode)
+
+
 # euclidean distance between two coordinates in the plane
-
-
 def euclidean(a, b):
     return math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2)

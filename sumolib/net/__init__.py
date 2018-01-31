@@ -1,25 +1,23 @@
-"""
-@file    __init__.py
-@author  Daniel Krajzewicz
-@author  Laura Bieker
-@author  Karol Stosiek
-@author  Michael Behrisch
-@author  Jakob Erdmann
-@author  Robert Hilbrich
-@date    2008-03-27
-@version $Id: __init__.py 24083 2017-04-27 10:25:54Z namdre $
+# Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
+# Copyright (C) 2008-2017 German Aerospace Center (DLR) and others.
+# This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v2.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v20.html
 
+# @file    __init__.py
+# @author  Daniel Krajzewicz
+# @author  Laura Bieker
+# @author  Karol Stosiek
+# @author  Michael Behrisch
+# @author  Jakob Erdmann
+# @author  Robert Hilbrich
+# @date    2008-03-27
+# @version $Id$
+
+"""
 This file contains a content handler for parsing sumo network xml files.
 It uses other classes from this module to represent the road network.
-
-SUMO, Simulation of Urban MObility; see http://sumo.dlr.de/
-Copyright (C) 2008-2017 DLR (http://www.dlr.de/) and contributors
-
-This file is part of SUMO.
-SUMO is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
 """
 
 from __future__ import print_function
@@ -79,6 +77,9 @@ class TLS:
 
     def addProgram(self, program):
         self._programs[program._id] = program
+
+    def removePrograms(self):
+        self._programs.clear()
 
     def toXML(self):
         ret = ""
@@ -286,9 +287,11 @@ class Net:
         tls.addConnection(inLane, outLane, linkNo)
         return tls
 
-    def addTLSProgram(self, tlid, programID, offset, type):
+    def addTLSProgram(self, tlid, programID, offset, type, removeOthers):
         tls = self.getTLSSecure(tlid)
         program = TLSProgram(programID, offset, type)
+        if removeOthers:
+            tls.removePrograms()
         tls.addProgram(program)
         return program
 
@@ -406,6 +409,9 @@ class NetReader(handler.ContentHandler):
         self._currentNode = None
         self._currentLane = None
         self._withPhases = others.get('withPrograms', False)
+        self._latestProgram = others.get('withLatestPrograms', False)
+        if self._latestProgram:
+            self._withPhases = True
         self._withConnections = others.get('withConnections', True)
         self._withFoes = others.get('withFoes', True)
         self._withInternal = others.get('withInternal', False)
@@ -420,10 +426,19 @@ class NetReader(handler.ContentHandler):
                 prio = -1
                 if 'priority' in attrs:
                     prio = int(attrs['priority'])
-                self._currentEdge = self._net.addEdge(attrs['id'],
-                                                      attrs.get('from', None), attrs.get(
-                                                          'to', None),
+
+                # get the  ids
+                edgeID = attrs['id']
+                fromNodeID = attrs.get('from', None)
+                toNodeID = attrs.get('to', None)
+
+                # for internal junctions use the junction's id for from and to node
+                if function == 'internal':
+                    fromNodeID = toNodeID = edgeID[1:edgeID.rfind('_')]
+
+                self._currentEdge = self._net.addEdge(edgeID, fromNodeID, toNodeID,
                                                       prio, function, attrs.get('name', ''))
+
                 self._currentEdge.setRawShape(
                     convertShape(attrs.get('shape', '')))
             else:
@@ -519,7 +534,7 @@ class NetReader(handler.ContentHandler):
         # netconvert... (Leo)
         if self._withPhases and name == 'tlLogic':
             self._currentProgram = self._net.addTLSProgram(
-                attrs['id'], attrs['programID'], int(attrs['offset']), attrs['type'])
+                attrs['id'], attrs['programID'], float(attrs['offset']), attrs['type'], self._latestProgram)
         if self._withPhases and name == 'phase':
             self._currentProgram.addPhase(
                 attrs['state'], int(attrs['duration']))

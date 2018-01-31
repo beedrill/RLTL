@@ -1,18 +1,15 @@
-"""
-@file    rilsa1_both_tls.py
-@author  Daniel Krajzewicz
-@date    2014-09-01
-@version $Id: rilsa1_both_tls.py 22608 2017-01-17 06:28:54Z behrisch $
+# Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
+# Copyright (C) 2012-2017 German Aerospace Center (DLR) and others.
+# This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v2.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v20.html
 
-SUMO, Simulation of Urban MObility; see http://sumo.dlr.de/
-Copyright (C) 2012-2017 DLR (http://www.dlr.de/) and contributors
+# @file    rilsa1_both_tls.py
+# @author  Daniel Krajzewicz
+# @date    2014-09-01
+# @version $Id$
 
-This file is part of SUMO.
-SUMO is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
-"""
 from __future__ import absolute_import
 
 
@@ -90,4 +87,4 @@ class Scenario_RiLSA1BothTLS(Scenario):
         self.netName = self.sandboxPath(self.NET_FILE)
         shutil.copy(
             self.fullPath(self.NET_FILE), self.sandboxPath(self.NET_FILE))
-        #shutil.copy(self.fullPath(self.TLS_FILE), self.sandboxPath(self.TLS_FILE))
+        # shutil.copy(self.fullPath(self.TLS_FILE), self.sandboxPath(self.TLS_FILE))
