@@ -213,7 +213,7 @@ class DQNAgents:
                 self.episodes += 1
                 state = None
                 for i, r in enumerate(episode_reward):
-                    writer.add_summary(self.log_tb_value(str(i) + '_episode_reward', r), self.episodes)
+                    writer.add_summary(self.log_tb_value(self.agents[i].name + '_episode_reward', r), self.episodes)
                 
                 # evaluation
                 if self.steps > self.num_burn_in and self.episodes % self.evaluation_interval == 0:
