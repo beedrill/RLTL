@@ -171,15 +171,15 @@ def main():
         import pysumo
         env = Simulator(episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/5-intersections/traffic.net.xml',
-                        route_file='map/5-intersections/traffic.rou.xml')
+                        map_file='map/2-intersections/traffic.net.xml',
+                        route_file='map/2-intersections/traffic.rou.xml')
     else:
         import traci
         env = Simulator(visual=True,
                         episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/5-intersections/traffic.net.xml',
-                        route_file='map/5-intersections/traffic.rou.xml')
+                        map_file='map/2-intersections/traffic.net.xml',
+                        route_file='map/2-intersections/traffic.rou.xml')
         
     id_list = env.tl_id_list
     num_agents = len(id_list)
@@ -279,6 +279,11 @@ def main():
                 #name=id,
                 input_shape=input_shape,
                 stride=stride)
+
+        if args.load:
+            for agent in agents.agents:
+                weight_name = args.load + '_' + agent.name + '.hdf5'
+                agent.model.load_weights(weight_name)
     
         if args.mode == 'train':
             # log file
@@ -312,12 +317,12 @@ def main():
             if not args.load:
                 print 'please load a model'
                 return
-            for i, agent in enumerate(agents.agents):
+            #for agent in agents.agents:
                 # currently, remove after weights....
-                #weight_name = args.load + '_' + str(i) + '.hdf5'
+                #weight_name = args.load + '_' + agent.name + '.hdf5'
                 #weight_name = "DQN_weights/TL-run23/DQN_SUMO_450000_weights_"+agent.name+".hdf5"
-                weight_name = "DQN_weights/TL-run25/DQN_SUMO_best_weights_"+agent.name+".hdf5"
-                agent.model.load_weights(weight_name)
+                #weight_name = "DQN_weights/TL-run25/DQN_SUMO_best_weights_"+agent.name+".hdf5"
+                #agent.model.load_weights(weight_name)
             
             #print model.layers[3].get_weights()
             #print 'number of layers',len(model.layers)
