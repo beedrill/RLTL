@@ -367,7 +367,7 @@ class SimpleTrafficLight(TrafficLight):
         sim = self.simulator
         self.reward = 0
         
-        car_normalizing_number = 1.
+        car_normalizing_number = 20. #1. # TODO generalize by length / car length
 
         # Traffic State 1
         for i in range(0, 4):
@@ -380,7 +380,8 @@ class SimpleTrafficLight(TrafficLight):
                 if v.lane_position < temp and v.equipped:
                     temp = sim.veh_list[vid].lane_position
             #self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
-            self.traffic_state[i+4] = temp
+            self.traffic_state[i+4] = 1 - temp / 125. # TODO generalize
+            #self.traffic_state[i+4] = temp
             self.reward += sim.lane_list[lane_list[i]].lane_reward
         self.traffic_state[8] = self.current_phase_time/float(self.max_time)
         if self.current_phase in [0,1]:
@@ -424,7 +425,6 @@ class SimpleTrafficLight(TrafficLight):
             # if no appropriate action is given, phase doesn't change
             # if self.current_phase_time > self.yellow_time and self.correct_action(action):
             #     self.move_to_next_phase()
-       
         self.updateRLParameters()
         # make sure this method is called last to avoid error
 

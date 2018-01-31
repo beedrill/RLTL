@@ -169,10 +169,10 @@ def main():
         import pysumo
         env = Simulator(episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        #map_file='map/2-intersections/traffic.net.xml',
-                        #route_file='map/2-intersections/traffic.rou.xml')
-                        map_file='map/two-intersection/traffic.net.xml',
-                        route_file='map/two-intersection/traffic.rou.xml')
+                        map_file='map/2-intersections/traffic.net.xml',
+                        route_file='map/2-intersections/traffic.rou.xml')
+                        #map_file='map/two-intersection/traffic.net.xml',
+                        #route_file='map/two-intersection/traffic.rou.xml')
     else:
         import traci
         env = Simulator(visual=True,
@@ -314,14 +314,17 @@ def main():
             for i, agent in enumerate(agents.agents):
                 # currently, remove after weights....
                 #weight_name = args.load + '_' + str(i) + '.hdf5'
-                weight_name = "DQN_weights/multiagent/DQN_SUMO_15000_weights_"+agent.name+".hdf5"
+                #weight_name = "DQN_weights/TL-run23/DQN_SUMO_450000_weights_"+agent.name+".hdf5"
+                weight_name = "DQN_weights/TL-run25/DQN_SUMO_best_weights_"+agent.name+".hdf5"
                 agent.model.load_weights(weight_name)
             
             #print model.layers[3].get_weights()
             #print 'number of layers',len(model.layers)
             num_episodes = 10
-            avg_total_reward = agents.evaluate(env=env, num_episodes=num_episodes)
-            print 'average total reward for {} episodes: {}'.format(num_episodes, avg_total_reward)
+            avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = agents.evaluate(env=env, num_episodes=num_episodes)
+            print 'Evaluation Result for average of {} episodes'.format(num_episodes)
+            print 'average total reward: {} \noverall waiting time: {} \nequipped waiting time: {} \nunequipped waiting time: {}'\
+                .format(avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time)
             env.stop()
     
 
