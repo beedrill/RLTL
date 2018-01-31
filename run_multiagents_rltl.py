@@ -22,6 +22,8 @@ from DQNTL.objectives import mean_huber_loss
 
 from simulator import Simulator
 
+import pdb ##TODO delete after debugging
+
 
 def conv_layers(permute):
     with tf.name_scope('conv1'):
@@ -164,26 +166,24 @@ def main():
     
     window = 1  # total size of the state
     stride = 0  # stride/skip of states
-
+    #pdb.set_trace()
     if args.pysumo:
         import pysumo
         env = Simulator(episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/2-intersections/traffic.net.xml',
-                        route_file='map/2-intersections/traffic.rou.xml')
-                        #map_file='map/two-intersection/traffic.net.xml',
-                        #route_file='map/two-intersection/traffic.rou.xml')
+                        map_file='map/5-intersections/traffic.net.xml',
+                        route_file='map/5-intersections/traffic.rou.xml')
     else:
         import traci
         env = Simulator(visual=True,
                         episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/2-intersections/traffic.net.xml',
-                        route_file='map/2-intersections/traffic.rou.xml')
+                        map_file='map/5-intersections/traffic.net.xml',
+                        route_file='map/5-intersections/traffic.rou.xml')
         
     id_list = env.tl_id_list
     num_agents = len(id_list)
-    
+    #pdb.set_trace() #TODO delete after debugging
     if tl_state == 1:
         input_shape = (1, env.num_traffic_state)
         buffer_input_shape = (num_agents, 1, env.num_traffic_state)
@@ -223,7 +223,7 @@ def main():
     with tf.device(device):
     
         # model
-        model = create_model(window=window, input_shape=input_shape, num_actions=num_actions)
+        #model = create_model(window=window, input_shape=input_shape, num_actions=num_actions)
         # memory
         memory = ReplayMemory(max_size=memory_size, window_length=window, stride=stride, state_input=buffer_input_shape)
         # policy
@@ -234,6 +234,7 @@ def main():
         index = 0
         for id in id_list:
             # agent
+            model = create_model(window=window, input_shape=input_shape, num_actions=num_actions)
             agent = DQNAgent(
                 model=model,
                 preprocessor=preprocessor,

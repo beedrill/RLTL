@@ -94,7 +94,9 @@ class Simulator():
                 continue
             self.lane_list[l] = Lane(l,self,penetration_rate=self.penetration_rate, length = traci.lane.getLength(l))
             #print 'lane list', l
-       # print len(self.lane_list.keys())
+
+        #print len(self.lane_list.keys())
+
         traci.close()
     def _simulation_start(self):
         if self.visual == False:
