@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Run DQN to train traffic lights in SUMO environment.
-
+One centralized system to control several traffic lights agents.
 """
 
 
@@ -165,13 +165,23 @@ def main():
 
     if args.pysumo:
         import pysumo
-        env = Simulator(episode_time=episode_time,penetration_rate = args.penetration_rate)
+        env = Simulator(episode_time=episode_time,
+                        penetration_rate = args.penetration_rate,
+                        map_file='map/2-intersections/traffic.net.xml',
+                        route_file='map/2-intersections/traffic.rou.xml')
     else:
         import traci
-        env = Simulator(visual=True, episode_time=episode_time, penetration_rate = args.penetration_rate)
+        env = Simulator(visual=True,
+                        episode_time=episode_time,
+                        penetration_rate = args.penetration_rate,                        
+                        map_file='map/2-intersections/traffic.net.xml',
+                        route_file='map/2-intersections/traffic.rou.xml')
+
+    id_list = env.tl_id_list
+    num_agents = len(id_list)
 
     if tl_state == 1:
-        input_shape = (1, env.num_traffic_state)
+        input_shape = (num_agents, env.num_traffic_state)
         window = 1
         preprocessor = TLStatePreprocessor()
     elif tl_state == 2:
@@ -193,7 +203,8 @@ def main():
     seed = args.seed
     # env.seed(seed)
 
-    num_actions = env.action_space.n
+    # total number of actions is action space times number of agents
+    num_actions = env.action_space.n * num_agents
     # print 'num_actions', num_actions
     
     # memory grows as it requires

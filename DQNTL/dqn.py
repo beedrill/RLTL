@@ -618,6 +618,8 @@ class DQNAgent:
         """		
         
         state = env.reset()
+        state = state[0]
+        state = np.expand_dims(state, axis=0)
 
         for _ in range(np.random.randint(self.start_random_steps)):
             action = env.action_space.sample()  # sample random action
