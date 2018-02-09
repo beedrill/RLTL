@@ -172,14 +172,14 @@ def main():
         env = Simulator(episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
                         map_file='map/5-intersections/traffic.net.xml',
-                        route_file='map/5-intersections/traffic.rou.xml')
+                        route_file='map/5-intersections/traffic-turn.rou.xml')
     else:
         import traci
         env = Simulator(visual=True,
                         episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
                         map_file='map/5-intersections/traffic.net.xml',
-                        route_file='map/5-intersections/traffic.rou.xml')
+                        route_file='map/5-intersections/traffic-turn.rou.xml')
         
     id_list = env.tl_id_list
     num_agents = len(id_list)

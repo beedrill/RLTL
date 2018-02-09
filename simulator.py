@@ -462,7 +462,7 @@ if __name__ == '__main__':
                     visual=True,
                     penetration_rate = 0.5,
                     map_file = 'map/5-intersections/traffic.net.xml', 
-                 route_file = 'map/5-intersections/traffic.rou.xml')
+                 route_file = 'map/5-intersections/traffic-turn.rou.xml')
     #sim = Simulator(visual = True, episode_time=episode_time)
     # use this commend if you don't have pysumo installed
     sim.start()
