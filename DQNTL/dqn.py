@@ -573,7 +573,6 @@ class DQNAgent:
             else:
                 # sample a mini batch
                 batch_state, batch_action, batch_reward, batch_next_state, batch_terminal = self.memory.sample(self.batch_size)
-
             batch_state = self.preprocessor.process_batch(batch_state)
             batch_next_state = self.preprocessor.process_batch(batch_next_state)
             # compute target q values
@@ -618,14 +617,14 @@ class DQNAgent:
         """		
         
         state = env.reset()
-        state = state[0]
-        state = np.expand_dims(state, axis=0)
+        #state = state[0]
+        #state = np.expand_dims(state, axis=0)
 
         for _ in range(np.random.randint(self.start_random_steps)):
             action = env.action_space.sample()  # sample random action
             next_state, _, _, _ = env.step(action)
-            next_state = next_state[0]
-            next_state = np.expand_dims(next_state, axis=0)
+            #next_state = next_state[0]
+            #next_state = np.expand_dims(next_state, axis=0)
             state = next_state
         
         return state
@@ -703,11 +702,14 @@ class DQNAgent:
 
             # select action 
             action = self.select_action()
-            action = [action]
+            #print 'before', action
+            action = env.decode_action(action)
+            #print action
+            #action = [action]
             next_state, reward, terminal, _ = env.step(action)
-            next_state = next_state[0]
-            next_state = np.expand_dims(next_state, axis=0)
-            reward = reward[0]
+            #next_state = next_state[0]
+            #next_state = np.expand_dims(next_state, axis=0)
+            reward = np.sum(reward)
 
             if type(next_state) is not np.ndarray:
                 print 'wrong'
@@ -813,11 +815,13 @@ class DQNAgent:
             episode_reward = 0.
             while True:
                 action = self.select_action('test', test_episode_steps)
-                action = [action]
+                #action = [action]
+                action = env.decode_action(action)
                 next_state, reward, terminal, _ = env.step(action)
-                next_state = next_state[0]
-                next_state = np.expand_dims(next_state, axis=0)
-                reward = reward[0]
+                #next_state = next_state[0]
+                #next_state = np.expand_dims(next_state, axis=0)
+                #reward = reward[0]
+                reward = np.sum(reward)
                 state = next_state
                 #self.recent_states_test.append(self.preprocessor.process_state_for_memory(state))
                 self.recent_states_test_map[test_episode_steps % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state))

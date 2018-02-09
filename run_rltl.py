@@ -203,8 +203,8 @@ def main():
     seed = args.seed
     # env.seed(seed)
 
-    # total number of actions is action space times number of agents
-    num_actions = env.action_space.n * num_agents
+    # total number of actions is action space power of number of agents
+    num_actions = env.action_space.n ** num_agents
     # print 'num_actions', num_actions
     
     # memory grows as it requires

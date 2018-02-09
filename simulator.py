@@ -123,7 +123,17 @@ class Simulator():
         else:
             self.time += 1
             traci.simulationStep()
-            return 
+            return
+
+    def decode_action(self, encoded_action):
+        actions = []
+        for _ in range(len(self.tl_id_list)):
+            if encoded_action & 1 == 1:
+                actions.append(1)
+            else:
+                actions.append(0)
+            encoded_action >>= 1
+        return actions
         
     def step(self, actions):
         self._simulation_step()
