@@ -703,10 +703,10 @@ class DQNAgent:
             # select action 
             action = self.select_action()
             #print 'before', action
-            action = env.decode_action(action)
+            decoded_action = env.decode_action(action)
             #print action
             #action = [action]
-            next_state, reward, terminal, _ = env.step(action)
+            next_state, reward, terminal, _ = env.step(decoded_action)
             #next_state = next_state[0]
             #next_state = np.expand_dims(next_state, axis=0)
             reward = np.sum(reward)
@@ -771,7 +771,7 @@ class DQNAgent:
                     print 'Evaluation reward {}'.format(avg_reward)
                     if avg_reward < min_reward:
                         min_reward = avg_reward
-                        file_name = '{}_{}_bestweights.hdf5'.format(self.network, self.env_name)
+                        file_name = '{}_{}_best_weights.hdf5'.format(self.network, self.env_name)
                         file_path = weights_file + file_name
                         self.model.save_weights(file_path)
             # counter update
@@ -816,8 +816,8 @@ class DQNAgent:
             while True:
                 action = self.select_action('test', test_episode_steps)
                 #action = [action]
-                action = env.decode_action(action)
-                next_state, reward, terminal, _ = env.step(action)
+                decoded_action = env.decode_action(action)
+                next_state, reward, terminal, _ = env.step(decoded_action)
                 #next_state = next_state[0]
                 #next_state = np.expand_dims(next_state, axis=0)
                 #reward = reward[0]
