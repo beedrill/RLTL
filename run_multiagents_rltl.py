@@ -143,11 +143,13 @@ def main():
     parser.add_argument('--gpu', default=0, help='comma separated list of GPU(s) to use.')
     parser.add_argument('--cpu', action='store_true', help='use CPU')
     parser.add_argument('--load', help='load model.')
+    parser.add_argument('--record', action = 'store_true', help='record results when loading.')
     # parser.add_argument('--render', action='store_true', default=False, help='render while testing')
     parser.add_argument('--pysumo', action='store_true', help='use pysumo')
     parser.add_argument('--dir_name', default = 'TL',help = 'directory name')
     parser.add_argument('--no_counter', action = 'store_true', default = False, help = 'no counter in saving files, note it might overwrite previous results')
     parser.add_argument('--penetration_rate', type = float, default = 1., help = 'specify penetration rate')
+    parser.add_argument('--sumo', action='store_true', help='force to use non-gui sumo')
     
     args = parser.parse_args()
 
@@ -171,15 +173,17 @@ def main():
         import pysumo
         env = Simulator(episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/4x4intersections/traffic.net.xml',
-                        route_file='map/4x4intersections/traffic.rou.xml')
+                        map_file='map/5-intersections/traffic.net.xml',
+                        route_file='map/5-intersections/traffic-turn.rou.xml')
     else:
         import traci
         env = Simulator(visual=True,
                         episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/4x4intersections/traffic.net.xml',
-                        route_file='map/4x4intersections/traffic.rou.xml')
+                        map_file='map/5-intersections/traffic.net.xml',
+                        route_file='map/5-intersections/traffic-turn.rou.xml')
+        if args.sumo:
+            env.cmd[0] = 'sumo'
         
     id_list = env.tl_id_list
     num_agents = len(id_list)
@@ -326,11 +330,15 @@ def main():
             
             #print model.layers[3].get_weights()
             #print 'number of layers',len(model.layers)
-            num_episodes = 10
+            
+            num_episodes = 1
             avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = agents.evaluate(env=env, num_episodes=num_episodes)
             print 'Evaluation Result for average of {} episodes'.format(num_episodes)
             print 'average total reward: {} \noverall waiting time: {} \nequipped waiting time: {} \nunequipped waiting time: {}'\
                 .format(avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time)
+                
+            if args.record:
+                env.record_result()
             env.stop()
     
 

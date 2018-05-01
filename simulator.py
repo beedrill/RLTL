@@ -27,7 +27,8 @@ class Simulator():
                  additional_file = None, 
                  gui_setting_file = "map/view.settings.xml",
                  penetration_rate = 1,
-                 num_traffic_state = 10):
+                 num_traffic_state = 10,
+                 record_file = "record.txt"):
         self.visual = visual
         self.map_file = map_file
         self.end_time = end_time
@@ -71,6 +72,7 @@ class Simulator():
             self.cmd+=['--additional-files', self.additional_file]
         if not gui_setting_file == None:
             self.cmd+=['--gui-settings-file', self.gui_setting_file]
+        self.record_file = record_file
         
      
     def _init_sumo_info(self):
@@ -234,7 +236,12 @@ class Simulator():
         print 'current time:', self.time, ' total cars:', len(self.veh_list.keys()), 'traffic status', tl.traffic_state, 'reward:', tl.reward
                                                              
 
-
+        
+        
+    def record_result(self):
+        f = open(self.record_file, 'a')
+        f.write('{}\t{}\t{}\n'.format(*(self.get_result())))
+        f.close()
    # def _update_vehicles(self):
    #     if self.visual == False:
    #         self.current_veh_list = pysumo.vehicle_list()
