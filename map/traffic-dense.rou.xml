@@ -5,5 +5,5 @@
 <flow depart="1" id="flow_n_s" route="route_ns" type="Car" begin="0" end="3600" probability="0.2"/>
 <flow depart="1" id="flow_s_n" route="route_sn" type="Car" begin="0" end="3600" probability="0.2"/>
 <flow depart="1" id="flow_e_w" route="route_ew" type="Car" begin="0" end="3600" probability="0.2"/>
-<flow depart="1" id="flow_w_e" route="route_we" type="Car" begin="0" end="3600" probability="0.2"/>
+<flow depart="1" id="flow_w_e" route="route_we" type="Car" begin="0" end="3600" probability="0.5"/>
 </routes>
