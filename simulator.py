@@ -6,6 +6,57 @@ from time import time
 import numpy as np
 import random
 
+class SimpleFlowManager():
+    def __init__(self, simulator,
+                 rush_hour_file = 'map/traffic-dense.rou.xml', 
+                 normal_hour_file = 'map/traffic-medium.rou.xml', 
+                 midnight_file = 'map/traffic-sparse.rou.xml'):
+                     
+        self.rush_hour_file = rush_hour_file
+        self.normal_hour_file = normal_hour_file
+        self.midnight_file = midnight_file
+        self.sim = simulator
+        
+    def travel_to_random_time(self):
+        t = random.randint(0,23)
+        self.travel_to_time(t)
+        
+        
+    def travel_to_time(self,t):
+        route_file = self.get_carflow(t)
+        self.sim.route_file = route_file
+        self.sim.current_day_time = t
+        self.sim.cmd[4] = route_file
+        print 'successfully travel to time: ', t
+        
+    def get_carflow(self, t):
+        if t >= 0 and t <=7:
+            return self.midnight_file
+        
+        if t > 7 and t <= 9:
+            return self.rush_hour_file
+            
+        if t > 9 and t <= 16:
+            return self.normal_hour_file
+            
+        if t > 16 and t <= 19:
+            return self.rush_hour_file
+            
+        if t > 19 and t <= 22:
+            return self.normal_hour_file
+            
+        if t >22 and t <= 24:
+            return self.midnight_file
+        
+        print 'time:', t, 'is not a supported input, put something between 0 to 24'
+        
+class HourlyFlowManager(SimpleFlowManager):
+    def __init__(self, simulator, file_name = 'map/whole-day-flow/traffic'):
+        self.sim = simulator
+        self.file_name =file_name
+    
+    def get_carflow(self,t):
+        return self.file_name+'-{}.rou.xml'.format(int(t))
 
 class Simulator():
     """
@@ -27,8 +78,9 @@ class Simulator():
                  additional_file = None, 
                  gui_setting_file = "map/view.settings.xml",
                  penetration_rate = 1,
-                 num_traffic_state = 10,
-                 record_file = "record.txt"):
+                 num_traffic_state = 11,
+                 record_file = "record.txt",
+                 whole_day = False):
         self.visual = visual
         self.map_file = map_file
         self.end_time = end_time
@@ -39,6 +91,7 @@ class Simulator():
         self.tl_list = {}
         self.is_started = False
         self.time = 0
+        
         self.penetration_rate = penetration_rate
         #lane_list = ['0_e_0', '0_n_0','0_s_0','0_w_0','e_0_0','n_0_0','s_0_0','w_0_0'] # temporary, in the future, get this from the .net.xml file
         #self.lane_list = {l:Lane(l,self,penetration_rate=penetration_rate) for l in lane_list}
@@ -53,6 +106,9 @@ class Simulator():
         ##############
         self.episode_time = episode_time
         self.action_space = ActionSpaces(len(self.tl_list), 2) # action = 1 means move to next phase, otherwise means stay in current phase
+        self.whole_day = whole_day
+        self.current_day_time = 0 # this is a value from 0 to 24
+        
         
 
         if self.visual == False:
@@ -68,6 +124,10 @@ class Simulator():
                   '--net-file', self.map_file, 
                   '--route-files', self.route_file,
                   '--end', str(self.end_time)]
+                  
+        if whole_day:
+            self.flow_manager = HourlyFlowManager(self)
+            self.flow_manager.travel_to_random_time() #this will travel to a random current_day_time and modifie the carflow accordingly
         if not additional_file == None:      
             self.cmd+=['--additional-files', self.additional_file]
         if not gui_setting_file == None:
@@ -175,7 +235,8 @@ class Simulator():
     def reset(self):
         if self.is_started == True:
             self.stop()
-            
+        if self.whole_day:
+            self.flow_manager.travel_to_random_time()
         self.veh_list = {}
         self.time = 0
         self.start()            
@@ -355,7 +416,7 @@ class TrafficLight():
 
 
 class SimpleTrafficLight(TrafficLight):
-    def __init__(self, tlid, simulator, max_phase_time= 40., min_phase_time = 5, yellow_time = 3, num_traffic_state = 10, lane_list = []):
+    def __init__(self, tlid, simulator, max_phase_time= 40., min_phase_time = 5, yellow_time = 3, num_traffic_state = 11, lane_list = []):
         
         TrafficLight.__init__(self, tlid, simulator)
         self.signal_groups = ['rrrrGGGGrrrrGGGG','rrrryyyyrrrryyyy','GGGGrrrrGGGGrrrr','yyyyrrrryyyyrrrr']
@@ -414,7 +475,12 @@ class SimpleTrafficLight(TrafficLight):
             self.traffic_state[6]*=-1
             self.traffic_state[7]*=-1
             self.traffic_state[8]*=-1
+        
         self.traffic_state[9] = 1 if self.current_phase in [1,3] else -1
+    
+        if self.simulator.whole_day:
+            self.traffic_state[10] = self.simulator.current_day_time/float(24)
+        
 
         # Traffic State 2 I will update this part in another inherited class, I don't want to put this in the same class since it becomes messy
         #if self.MAP_SPEED:

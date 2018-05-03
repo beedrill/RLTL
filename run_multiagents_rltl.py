@@ -173,12 +173,14 @@ def main():
         import pysumo
         env = Simulator(episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
+                        num_traffic_state = 10,
                         map_file='map/5-intersections/traffic.net.xml',
                         route_file='map/5-intersections/traffic-turn.rou.xml')
     else:
         import traci
         env = Simulator(visual=True,
                         episode_time=episode_time,
+                        num_traffic_state = 10,
                         penetration_rate = args.penetration_rate,
                         map_file='map/5-intersections/traffic.net.xml',
                         route_file='map/5-intersections/traffic-turn.rou.xml')
@@ -338,7 +340,10 @@ def main():
                 .format(avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time)
                 
             if args.record:
-                env.record_result()
+                record_file_name = 'record.txt'
+                f = open(record_file_name,'a')
+                f.write('{}\t{}\t{}\n'.format(overall_waiting_time,equipped_waiting_time,unequipped_waiting_time))
+                f.close()
             env.stop()
     
 

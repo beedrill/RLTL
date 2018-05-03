@@ -275,6 +275,10 @@ class DQNAgents:
                 agent.recent_states_test_map[test_episode_steps % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state[agent.index]))
 
             episode_reward = np.zeros(len(self.agents))
+            
+            cumulative_overall_waiting_time = 0
+            cumulative_equipped_waiting_time = 0
+            cumulative_unequipped_waiting_time = 0
             while True:
                 actions = []
                 for agent in self.agents:
@@ -297,10 +301,14 @@ class DQNAgents:
                 test_episode_steps += 1
                 
             cumulative_reward += episode_reward/test_episode_steps
+            overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = env.get_result()
+            cumulative_overall_waiting_time += overall_waiting_time
+            cumulative_equipped_waiting_time = equipped_waiting_time
+            cumulative_unequipped_waiting_time = unequipped_waiting_time
                 
         avg_total_reward = np.sum(cumulative_reward)/num_episodes
-        overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = env.get_result()
-        return avg_total_reward, overall_waiting_time,equipped_waiting_time,unequipped_waiting_time
+        
+        return avg_total_reward, cumulative_overall_waiting_time/num_episodes,cumulative_equipped_waiting_time/num_episodes,cumulative_unequipped_waiting_time/num_episodes
             
   
 class DQNAgent:

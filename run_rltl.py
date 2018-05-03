@@ -41,12 +41,12 @@ def dense_layers(permute): # TODO number of layers and units
         flat = Flatten()(permute)
     with tf.name_scope('dense1'):
         dense1 = Dense(512, activation='relu')(flat)
-    #with tf.name_scope('dense2'):
-    #     dense2 = Dense(512, activation='relu')(dense1)
+    with tf.name_scope('dense2'):
+         dense2 = Dense(512, activation='relu')(dense1)
    # with tf.name_scope('dense3'):
    #      dense3 = Dense(512, activation='relu')(dense2)
 
-    return dense1
+    return dense2
 
 
 def create_model(window, input_shape, num_actions,
@@ -147,12 +147,14 @@ def main():
     parser.add_argument('--dir_name', default = 'TL',help = 'directory name')
     parser.add_argument('--no_counter', action = 'store_true', default = False, help = 'no counter in saving files, note it might overwrite previous results')
     parser.add_argument('--penetration_rate', type = float, default = 1., help = 'specify penetration rate')
+    parser.add_argument('--whole_day', action = 'store_true', help = 'specify the time of the day when training') 
+    parser.add_argument('--day_time', type = int, help = 'specify day time')
     
     args = parser.parse_args()
 
     ## PARAMS ##
 
-    num_episodes = 150
+    num_episodes = 1500
     episode_time = 3000  # must be less than 3600
     num_iterations = num_episodes * episode_time
     memory_size = 100000
@@ -167,15 +169,15 @@ def main():
         import pysumo
         env = Simulator(episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/2-intersections/traffic.net.xml',
-                        route_file='map/2-intersections/traffic.rou.xml')
+                        map_file='map/whole-day-flow/traffic.net.xml',
+                        route_file='map/whole-day-flow/traffic-0.rou.xml', whole_day = args.whole_day)
     else:
         import traci
         env = Simulator(visual=True,
                         episode_time=episode_time,
                         penetration_rate = args.penetration_rate,                        
-                        map_file='map/2-intersections/traffic.net.xml',
-                        route_file='map/2-intersections/traffic.rou.xml')
+                        map_file='map/whole-day-flow/traffic.net.xml',
+                        route_file='map/whole-day-flow/traffic-0.rou.xml',whole_day = args.whole_day)
 
     id_list = env.tl_id_list
     num_agents = len(id_list)
@@ -281,10 +283,15 @@ def main():
                 print 'please load a model'
                 return
             agent.model.load_weights(args.load)
+            num_episodes = 10
+            
+            if args.whole_day:
+                env.flow_manager.travel_to_time(args.day_time)
+                num_episodes = 1
             
             #print model.layers[3].get_weights()
             #print 'number of layers',len(model.layers)
-            num_episodes = 10
+            
             avg_total_reward = agent.evaluate(env=env, num_episodes=num_episodes)
             print 'average total reward for {} episodes: {}'.format(num_episodes, avg_total_reward)
             env.stop()
