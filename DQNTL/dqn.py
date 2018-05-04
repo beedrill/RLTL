@@ -261,6 +261,10 @@ class DQNAgents:
         """
         cumulative_reward = np.zeros(len(self.agents))
         
+        cumulative_overall_waiting_time = 0.
+        cumulative_equipped_waiting_time = 0.
+        cumulative_unequipped_waiting_time = 0.
+        
         for episode in range(num_episodes):
 
             test_episode_steps = 0
@@ -276,9 +280,6 @@ class DQNAgents:
 
             episode_reward = np.zeros(len(self.agents))
             
-            cumulative_overall_waiting_time = 0
-            cumulative_equipped_waiting_time = 0
-            cumulative_unequipped_waiting_time = 0
             while True:
                 actions = []
                 for agent in self.agents:
@@ -808,6 +809,9 @@ class DQNAgent:
 
         """
         cumulative_reward = 0.0
+        cumulative_overall_waiting_time = 0.
+        cumulative_equipped_waiting_time = 0.
+        cumulative_unequipped_waiting_time = 0.
         
         for episode in range(num_episodes):
 
@@ -842,10 +846,15 @@ class DQNAgent:
                 test_episode_steps += 1
                 
             cumulative_reward += episode_reward/test_episode_steps
+            overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = env.get_result()
+            cumulative_overall_waiting_time += overall_waiting_time
+            cumulative_equipped_waiting_time = equipped_waiting_time
+            cumulative_unequipped_waiting_time = unequipped_waiting_time
                 
         avg_total_reward = float(cumulative_reward)/num_episodes
         overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = env.get_result()
-        return avg_total_reward, overall_waiting_time,equipped_waiting_time,unequipped_waiting_time		       	
+        
+        return avg_total_reward, cumulative_overall_waiting_time/num_episodes,cumulative_equipped_waiting_time/num_episodes,cumulative_unequipped_waiting_time/num_episodes		       	
 
     def hard_target_model_updates(self):
         """

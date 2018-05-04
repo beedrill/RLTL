@@ -91,6 +91,7 @@ class Simulator():
         self.tl_list = {}
         self.is_started = False
         self.time = 0
+        self.reset_to_same_time = False
         
         self.penetration_rate = penetration_rate
         #lane_list = ['0_e_0', '0_n_0','0_s_0','0_w_0','e_0_0','n_0_0','s_0_0','w_0_0'] # temporary, in the future, get this from the .net.xml file
@@ -235,7 +236,7 @@ class Simulator():
     def reset(self):
         if self.is_started == True:
             self.stop()
-        if self.whole_day:
+        if self.whole_day and self.reset_to_same_time == False:
             self.flow_manager.travel_to_random_time()
         self.veh_list = {}
         self.time = 0

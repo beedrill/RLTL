@@ -141,6 +141,7 @@ def main():
     parser.add_argument('--gpu', default=0, help='comma separated list of GPU(s) to use.')
     parser.add_argument('--cpu', action='store_true', help='use CPU')
     parser.add_argument('--load', help='load model.')
+    parser.add_argument('--record', action = 'store_true', help='record results when loading.')
     # parser.add_argument('--double', action='store_true', help='double DQN implementation.')
     # parser.add_argument('--duel', action='store_true', help='duel DQN implementation.')
     parser.add_argument('--pysumo', action='store_true', help='use pysumo')
@@ -287,13 +288,23 @@ def main():
             
             if args.whole_day:
                 env.flow_manager.travel_to_time(args.day_time)
-                num_episodes = 1
+                num_episodes = 10
+                env.reset_to_same_time = True
             
             #print model.layers[3].get_weights()
             #print 'number of layers',len(model.layers)
             
-            avg_total_reward = agent.evaluate(env=env, num_episodes=num_episodes)
-            print 'average total reward for {} episodes: {}'.format(num_episodes, avg_total_reward)
+            #avg_total_reward = agent.evaluate(env=env, num_episodes=num_episodes)
+            avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = agent.evaluate(env=env, num_episodes=num_episodes)
+            print 'Evaluation Result for average of {} episodes'.format(num_episodes)
+            print 'average total reward: {} \noverall waiting time: {} \nequipped waiting time: {} \nunequipped waiting time: {}'\
+                .format(avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time)
+            
+            if args.record:
+                record_file_name = 'record.txt'
+                f = open(record_file_name,'a')
+                f.write('{}\t{}\t{}\n'.format(overall_waiting_time,equipped_waiting_time,unequipped_waiting_time))
+                f.close()
             env.stop()
 
 if __name__ == '__main__':
