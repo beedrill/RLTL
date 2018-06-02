@@ -181,7 +181,8 @@ def main():
                         map_file='map/1-intersections/1-intersection/traffic.net.xml',
                         route_file='map/1-intersections/1-intersection/traffic.rou.xml',  
                         whole_day = args.whole_day, 
-                        flow_manager_file_prefix='map/1-intersection/traffic')
+                        flow_manager_file_prefix='map/1-intersection/traffic',
+                        state_representation = args.phase_representation)
     else:
         import traci
         env = Simulator(visual=True,
@@ -191,7 +192,8 @@ def main():
                         map_file='map/1-intersections/1-intersection/traffic.net.xml',
                         route_file='map/1-intersections/1-intersection/traffic.rou.xml', 
                         whole_day = args.whole_day,
-                        flow_manager_file_prefix='map/whole-day-flow/traffic')
+                        flow_manager_file_prefix='map/whole-day-flow/traffic',
+                        state_representation = args.phase_representation)
         if args.sumo:
             env.cmd[0] = 'sumo'
         
