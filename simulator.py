@@ -442,6 +442,7 @@ class SimpleTrafficLight(TrafficLight):
         self.num_traffic_state = num_traffic_state
         self.traffic_state = [None for i in range(0, self.num_traffic_state)]
         self.lane_list = lane_list
+        self.state_representation = state_representation
         # Traffic State 2
         # Lanes with car speed in its position
         #self.MAP_SPEED = False
