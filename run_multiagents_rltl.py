@@ -151,11 +151,14 @@ def main():
     parser.add_argument('--penetration_rate', type = float, default = 1., help = 'specify penetration rate')
     parser.add_argument('--sumo', action='store_true', help='force to use non-gui sumo')
     
+    parser.add_argument('--whole_day', action = 'store_true', help = 'specify the time of the day when training') 
+    parser.add_argument('--day_time', type = int, help = 'specify day time')
+    
     args = parser.parse_args()
 
     ## PARAMS ##
 
-    num_episodes = 150
+    num_episodes = 1500
     episode_time = 3000  # must be less than 3600
     num_iterations = num_episodes * episode_time
     memory_size = 100000
@@ -173,22 +176,28 @@ def main():
         import pysumo
         env = Simulator(episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        num_traffic_state = 10,
-                        map_file='map/5-intersections/traffic.net.xml',
-                        route_file='map/5-intersections/traffic-turn.rou.xml')
+                        num_traffic_state = 11,
+                        map_file='map/5-intersections/whole-day-flow/traffic.net.xml',
+                        route_file='map/5-intersections/whole-day-flow/traffic-0.rou.xml',  
+                        whole_day = args.whole_day, 
+                        flow_manager_file_prefix='map/whole-day-flow/traffic')
     else:
         import traci
         env = Simulator(visual=True,
                         episode_time=episode_time,
-                        num_traffic_state = 10,
+                        num_traffic_state = 11,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/5-intersections/traffic.net.xml',
-                        route_file='map/5-intersections/traffic-turn.rou.xml')
+                        map_file='map/5-intersections/whole-day-flow/traffic.net.xml',
+                        route_file='map/5-intersections/whole-day-flow/traffic-0.rou.xml', 
+                        whole_day = args.whole_day,
+                        flow_manager_file_prefix='map/whole-day-flow/traffic')
         if args.sumo:
             env.cmd[0] = 'sumo'
         
     id_list = env.tl_id_list
     num_agents = len(id_list)
+    print num_agents
+    #os.system("pause")
     #pdb.set_trace() #TODO delete after debugging
     if tl_state == 1:
         input_shape = (1, env.num_traffic_state)
@@ -334,6 +343,10 @@ def main():
             #print 'number of layers',len(model.layers)
             
             num_episodes = 1
+            if args.whole_day:
+                env.flow_manager.travel_to_time(args.day_time)
+                num_episodes = 10
+                env.reset_to_same_time = True
             avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = agents.evaluate(env=env, num_episodes=num_episodes)
             print 'Evaluation Result for average of {} episodes'.format(num_episodes)
             print 'average total reward: {} \noverall waiting time: {} \nequipped waiting time: {} \nunequipped waiting time: {}'\

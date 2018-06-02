@@ -80,7 +80,8 @@ class Simulator():
                  penetration_rate = 1,
                  num_traffic_state = 11,
                  record_file = "record.txt",
-                 whole_day = False):
+                 whole_day = False,
+                 flow_manager_file_prefix = 'map/whole-day-flow/traffic'):
         self.visual = visual
         self.map_file = map_file
         self.end_time = end_time
@@ -127,7 +128,7 @@ class Simulator():
                   '--end', str(self.end_time)]
                   
         if whole_day:
-            self.flow_manager = HourlyFlowManager(self)
+            self.flow_manager = HourlyFlowManager(self, file_name=flow_manager_file_prefix)
             self.flow_manager.travel_to_random_time() #this will travel to a random current_day_time and modifie the carflow accordingly
         if not additional_file == None:      
             self.cmd+=['--additional-files', self.additional_file]
@@ -135,7 +136,12 @@ class Simulator():
             self.cmd+=['--gui-settings-file', self.gui_setting_file]
         self.record_file = record_file
         
-     
+    def step_(self):
+        #use step() for standard operation, this is only for normal traffic light
+        self._simulation_step()
+        for l in self.lane_list:
+            self.lane_list[l].step()
+            
     def _init_sumo_info(self):
         cmd = ['sumo', 
                   '--net-file', self.map_file, 
@@ -213,12 +219,14 @@ class Simulator():
             observation.append(tl.traffic_state)
             reward.append(self.tl_list[tlid].reward)
             i += 1
-
+        
+        #print reward
         observation = np.array(observation)
         reward = np.array(reward)
         info = (self.time, len(self.veh_list.keys()))
         #if not type( observation[0][0]) in ['int',np.float64]:
         #    print 'something wrong', observation[0][0], type(observation[0][0])
+        #print reward
         
         return observation, reward, self.time == self.episode_time, info
 
@@ -545,8 +553,8 @@ if __name__ == '__main__':
     sim = Simulator(episode_time=episode_time,
                     visual=True,
                     penetration_rate = 0.5,
-                    map_file = 'map/5-intersections/traffic.net.xml', 
-                 route_file = 'map/5-intersections/traffic-turn.rou.xml')
+                    map_file = 'map/5-intersections/whole-day-flow/traffic.net.xml', 
+                 route_file = 'map/5-intersections/whole-day-flow/traffic-0.rou.xml')
     #sim = Simulator(visual = True, episode_time=episode_time)
     # use this commend if you don't have pysumo installed
     sim.start()
@@ -555,6 +563,7 @@ if __name__ == '__main__':
         while True:
             action = sim.action_space.sample()
             next_state, reward, terminal, info = sim.step(action)
+            #print reward
             sim.print_status()
             #if terminal:
             #    state = sim.reset()
