@@ -81,6 +81,7 @@ class Simulator():
                  num_traffic_state = 11,
                  record_file = "record.txt",
                  whole_day = False,
+                 state_representation = 'sign',
                  flow_manager_file_prefix = 'map/whole-day-flow/traffic'):
         self.visual = visual
         self.map_file = map_file
@@ -93,6 +94,7 @@ class Simulator():
         self.is_started = False
         self.time = 0
         self.reset_to_same_time = False
+        self.state_representation = state_representation
         
         self.penetration_rate = penetration_rate
         #lane_list = ['0_e_0', '0_n_0','0_s_0','0_w_0','e_0_0','n_0_0','s_0_0','w_0_0'] # temporary, in the future, get this from the .net.xml file
@@ -153,7 +155,7 @@ class Simulator():
         self.tl_id_list = tl_list
         
         for tlid in tl_list:
-            self.tl_list[tlid] = SimpleTrafficLight(tlid, self, num_traffic_state = self.num_traffic_state, lane_list = list(set(traci.trafficlights.getControlledLanes(tlid))))
+            self.tl_list[tlid] = SimpleTrafficLight(tlid, self, num_traffic_state = self.num_traffic_state, lane_list = list(set(traci.trafficlights.getControlledLanes(tlid))),state_representation = self.state_representation)
             #print 'controlled lane', self.tl_list[tlid].lane_list
         lane_list = traci.lane.getIDList()
         self.lane_list = {}
@@ -425,7 +427,7 @@ class TrafficLight():
 
 
 class SimpleTrafficLight(TrafficLight):
-    def __init__(self, tlid, simulator, max_phase_time= 40., min_phase_time = 5, yellow_time = 3, num_traffic_state = 11, lane_list = []):
+    def __init__(self, tlid, simulator, max_phase_time= 40., min_phase_time = 5, yellow_time = 3, num_traffic_state = 11, lane_list = [], state_representation = ''):
         
         TrafficLight.__init__(self, tlid, simulator)
         self.signal_groups = ['rrrrGGGGrrrrGGGG','rrrryyyyrrrryyyy','GGGGrrrrGGGGrrrr','yyyyrrrryyyyrrrr']
@@ -452,6 +454,12 @@ class SimpleTrafficLight(TrafficLight):
         self.reward = None
     
     def updateRLParameters(self):
+        if self.state_representation == 'original':
+            self.updateRLParameters_original()
+            return
+        elif not self.state_representation == 'sign':
+            print 'no such state representation supported'
+            return
         lane_list = self.lane_list  # temporary, in the future, get this from the .net.xml file
         sim = self.simulator
         self.reward = 0
@@ -501,6 +509,33 @@ class SimpleTrafficLight(TrafficLight):
         #                self.traffic_state[i, v.lane_position] = v.speed / Vehicle.max_speed
         #        self.reward += sim.lane_list[lane_list[i]].lane_reward
 
+    def updateRLParameters_original(self):
+        lane_list = self.lane_list  # temporary, in the future, get this from the .net.xml file
+        sim = self.simulator
+        self.reward = 0
+        
+        car_normalizing_number = 20. #1. # TODO generalize by length / car length
+
+        # Traffic State 1
+        for i in range(0, 4):
+            self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number/car_normalizing_number
+            temp = sim.lane_list[lane_list[i]].length
+            for vid in sim.lane_list[lane_list[i]].vehicle_list:
+                v = sim.veh_list[vid]
+                if v.equipped == False:
+                    continue
+                if v.lane_position < temp and v.equipped:
+                    temp = sim.veh_list[vid].lane_position
+            #self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
+            self.traffic_state[i+4] = 1 - temp / 125. # TODO generalize
+            #self.traffic_state[i+4] = temp
+            self.reward += sim.lane_list[lane_list[i]].lane_reward
+        self.traffic_state[8] = self.current_phase_time/float(self.max_time)
+
+        self.traffic_state[9] = self.current_phase
+    
+        if self.simulator.whole_day:
+            self.traffic_state[10] = self.simulator.current_day_time/float(24)
     def step(self, action):
         self.current_phase_time += 1
         # make sure this phrase remain to keep track on current phase time
