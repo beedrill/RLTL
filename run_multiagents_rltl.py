@@ -177,7 +177,7 @@ def main():
         import pysumo
         env = Simulator(episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        num_traffic_state = 11,
+                        num_traffic_state = 10,
                         map_file='map/1-intersection/traffic.net.xml',
                         route_file='map/1-intersection/traffic.rou.xml',  
                         whole_day = args.whole_day, 
