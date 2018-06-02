@@ -153,7 +153,7 @@ def main():
     
     parser.add_argument('--whole_day', action = 'store_true', help = 'specify the time of the day when training') 
     parser.add_argument('--day_time', type = int, help = 'specify day time')
-    parser.add_argument('--phase_representation'default = 'sign', , help = 'specify representation')
+    parser.add_argument('--phase_representation', default = 'sign', help = 'specify representation')
     
     args = parser.parse_args()
 
@@ -178,8 +178,8 @@ def main():
         env = Simulator(episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
                         num_traffic_state = 11,
-                        map_file='map/1-intersections/1-intersection/traffic.net.xml',
-                        route_file='map/1-intersections/1-intersection/traffic.rou.xml',  
+                        map_file='map/1-intersection/traffic.net.xml',
+                        route_file='map/1-intersection/traffic.rou.xml',  
                         whole_day = args.whole_day, 
                         flow_manager_file_prefix='map/1-intersection/traffic',
                         state_representation = args.phase_representation)
@@ -189,8 +189,8 @@ def main():
                         episode_time=episode_time,
                         num_traffic_state = 10,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/1-intersections/1-intersection/traffic.net.xml',
-                        route_file='map/1-intersections/1-intersection/traffic.rou.xml', 
+                        map_file='map/1-intersection/traffic.net.xml',
+                        route_file='map/1-intersection/traffic.rou.xml', 
                         whole_day = args.whole_day,
                         flow_manager_file_prefix='map/whole-day-flow/traffic',
                         state_representation = args.phase_representation)
