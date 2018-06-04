@@ -1,9 +1,10 @@
 # Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
-# Copyright (C) 2011-2017 German Aerospace Center (DLR) and others.
+# Copyright (C) 2011-2018 German Aerospace Center (DLR) and others.
 # This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v2.0
 # which accompanies this distribution, and is available at
 # http://www.eclipse.org/legal/epl-v20.html
+# SPDX-License-Identifier: EPL-2.0
 
 # @file    lane.py
 # @author  Daniel Krajzewicz
@@ -16,6 +17,7 @@
 
 
 import sumolib.geomhelper
+from functools import reduce
 
 # taken from sumo/src/utils/common/SUMOVehicleClass.cpp
 SUMO_VEHICLE_CLASSES = (
@@ -82,10 +84,11 @@ class Lane:
 
     """ Lanes from a sumo network """
 
-    def __init__(self, edge, speed, length, allow, disallow):
+    def __init__(self, edge, speed, length, width, allow, disallow):
         self._edge = edge
         self._speed = speed
         self._length = length
+        self._width = width
         self._shape = None
         self._shape3D = None
         self._shapeWithJunctions = None
@@ -93,6 +96,7 @@ class Lane:
         self._outgoing = []
         self._params = {}
         self._allowed = get_allowed(allow, disallow)
+        self._neigh = None
         edge.addLane(self)
 
     def getSpeed(self):
@@ -100,6 +104,9 @@ class Lane:
 
     def getLength(self):
         return self._length
+
+    def getWidth(self):
+        return self._width
 
     def setShape(self, shape):
         """Set the shape of the lane
@@ -195,6 +202,19 @@ class Lane:
 
     def getOutgoing(self):
         return self._outgoing
+
+    def getIncoming(self):
+        """
+        Returns all incoming lanes for this lane, i.e. lanes, which have a connection to this lane.
+        """
+        candidates = reduce(lambda x,y: x+y, [cons for e, cons in self._edge.getIncoming().items()],[])
+        return [c.getFromLane() for c in candidates if self == c.getToLane()]
+
+    def setNeigh(self, neigh):
+        self._neigh = neigh
+
+    def getNeigh(self):
+        return self._neigh
 
     def setParam(self, key, value):
         self._params[key] = value

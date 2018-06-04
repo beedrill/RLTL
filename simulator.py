@@ -1,6 +1,6 @@
-import pysumo
+import libsumo
 # comment this line if you dont have pysumo and set visual = True, it should still run traci
-# Todo: another class for another kind of traffic state formation
+
 import traci
 from time import time
 import numpy as np
@@ -150,6 +150,7 @@ class Simulator():
                   '--route-files', self.route_file,
                   '--end', str(self.end_time)]
         traci.start(cmd)
+        #time.sleep(1)
         tl_list = traci.trafficlights.getIDList()
         #print 'tls:',tl_list
         self.tl_id_list = tl_list
@@ -171,7 +172,7 @@ class Simulator():
         traci.close()
     def _simulation_start(self):
         if self.visual == False:
-            pysumo.simulation_start(self.cmd)
+            libsumo.start(self.cmd)
             return
         else:
             traci.start(self.cmd)
@@ -180,7 +181,7 @@ class Simulator():
     
     def _simulation_end(self):
         if self.visual == False:
-            pysumo.simulation_stop()
+            libsumo.close()
             return
         else:
             traci.close()
@@ -188,7 +189,7 @@ class Simulator():
         
     def _simulation_step(self):
         if self.visual == False:
-            pysumo.simulation_step()
+            libsumo.simulationStep()
             self.time += 1
             return
         else:
@@ -339,7 +340,7 @@ class Lane():
 
     def _get_vehicles(self):
         if self.simulator.visual == False:
-            return pysumo.lane_onLaneVehicles(self.id)
+            return libsumo.lane_getLastStepVehicleIDs(self.id)
         else:
             return traci.lane.getLastStepVehicleIDs(self.id)
         
@@ -377,7 +378,7 @@ class Vehicle():
     
     def _update_speed(self):
         if self.simulator.visual == False:
-            self.speed = pysumo.vehicle_speed(self.id)
+            self.speed = libsumo.vehicle_getSpeed(self.id)
             return 
         else:
             self.speed = traci.vehicle.getSpeed(self.id)
@@ -385,7 +386,7 @@ class Vehicle():
         
     def _update_lane_position(self):
         if self.simulator.visual == False:
-            self.lane_position = self.lane.length - pysumo.vehicle_lane_position(self.id)
+            self.lane_position = self.lane.length - libsumo.vehicle_getLanePosition(self.id)
             return
         else:
             self.lane_position = self.lane.length - traci.vehicle.getLanePosition(self.id)
@@ -415,7 +416,7 @@ class TrafficLight():
     def _set_phase(self, phase):
         self.current_phase = phase
         if self.simulator.visual == False:
-            pysumo.tls_setstate(self.id, self.signal_groups[phase])
+            libsumo.trafficlight_setRedYellowGreenState(self.id, self.signal_groups[phase])
             return
         else:
             traci.trafficlights.setRedYellowGreenState(self.id,self.signal_groups[phase])
@@ -586,23 +587,23 @@ if __name__ == '__main__':
     num_episode = 100
     episode_time = 3000
     
-    sim = Simulator(episode_time=episode_time,
-                    visual=True,
+    sim = Simulator(episode_time = episode_time,
+                    visual=False,
                     penetration_rate = 0.5,
-                    map_file = 'map/5-intersections/whole-day-flow/traffic.net.xml', 
-                 route_file = 'map/5-intersections/whole-day-flow/traffic-0.rou.xml')
+                    map_file = 'map/1-intersection/traffic.net.xml', 
+                 route_file = 'map/1-intersection/traffic.rou.xml')
     #sim = Simulator(visual = True, episode_time=episode_time)
     # use this commend if you don't have pysumo installed
     sim.start()
     for _ in range(num_episode):
-        # for i in range(episode_time):
-        while True:
+        for i in range(episode_time):
+        #while True:
             action = sim.action_space.sample()
             next_state, reward, terminal, info = sim.step(action)
             #print reward
             sim.print_status()
             #if terminal:
-            #    state = sim.reset()
+        state = sim.reset()
             #    print state
             #    array = np.array(state, np.float32)
                 #sim.print_status()

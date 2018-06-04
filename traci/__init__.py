@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 # Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
-# Copyright (C) 2008-2017 German Aerospace Center (DLR) and others.
+# Copyright (C) 2008-2018 German Aerospace Center (DLR) and others.
 # This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v2.0
 # which accompanies this distribution, and is available at
 # http://www.eclipse.org/legal/epl-v20.html
+# SPDX-License-Identifier: EPL-2.0
 
 # @file    __init__.py
 # @author  Michael Behrisch
@@ -53,8 +54,8 @@ def connect(port=8813, numRetries=10, host="localhost", proc=None):
         try:
             return Connection(host, port, proc)
         except socket.error as e:
-            print("Could not connect to TraCI server at %s:%s" %
-                  (host, port), e)
+            if wait > 1:
+                print("Could not connect to TraCI server at %s:%s" % (host, port), e)
             if wait < numRetries + 1:
                 print(" Retrying in %s seconds" % wait)
                 time.sleep(wait)
