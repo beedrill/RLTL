@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 # Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
-# Copyright (C) 2011-2017 German Aerospace Center (DLR) and others.
+# Copyright (C) 2011-2018 German Aerospace Center (DLR) and others.
 # This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v2.0
 # which accompanies this distribution, and is available at
 # http://www.eclipse.org/legal/epl-v20.html
+# SPDX-License-Identifier: EPL-2.0
 
 # @file    _simulation.py
 # @author  Daniel Krajzewicz
@@ -20,7 +21,7 @@ from . import constants as tc
 from .domain import Domain
 from .storage import Storage
 
-Stage = collections.namedtuple('Stage', ['stageType', 'line', 'destStop', 'edges', 'travelTime', 'cost'])
+Stage = collections.namedtuple('Stage', ['stageType', 'line', 'destStop', 'edges', 'travelTime', 'cost', 'intended', 'depart'])
 
 def _readStage(result):
     # compound size and type
@@ -32,7 +33,11 @@ def _readStage(result):
     result.read("!B")                   # Type
     edges = result.readStringList()
     _, travelTime, _, cost = result.read("!BdBd")
-    return Stage(stageType, line, destStop, edges, travelTime, cost)
+    result.read("!B")                   # Type
+    intended = result.readString()
+    result.read("!B")                   # Type
+    depart = result.readDouble()
+    return Stage(stageType, line, destStop, edges, travelTime, cost, intended, depart)
 
 _RETURN_VALUE_FUNC = {tc.VAR_TIME_STEP: Storage.readInt,
                       tc.VAR_LOADED_VEHICLES_NUMBER: Storage.readInt,
@@ -49,6 +54,8 @@ _RETURN_VALUE_FUNC = {tc.VAR_TIME_STEP: Storage.readInt,
                       tc.VAR_STOP_STARTING_VEHICLES_IDS: Storage.readStringList,
                       tc.VAR_STOP_ENDING_VEHICLES_NUMBER: Storage.readInt,
                       tc.VAR_STOP_ENDING_VEHICLES_IDS: Storage.readStringList,
+                      tc.VAR_COLLIDING_VEHICLES_NUMBER: Storage.readInt,
+                      tc.VAR_COLLIDING_VEHICLES_IDS: Storage.readStringList,
                       tc.VAR_MIN_EXPECTED_VEHICLES: Storage.readInt,
                       tc.VAR_BUS_STOP_WAITING: Storage.readInt,
                       tc.VAR_TELEPORT_STARTING_VEHICLES_NUMBER: Storage.readInt,
@@ -171,6 +178,20 @@ class SimulationDomain(Domain):
         .
         """
         return self._getUniversal(tc.VAR_STOP_ENDING_VEHICLES_IDS)
+
+    def getCollidingVehiclesNumber(self):
+        """getCollidingVehiclesNumber() -> integer
+        Return number of vehicles involved in a collision (typically 2 per
+        collision).
+        """
+        return self._getUniversal(tc.VAR_COLLIDING_VEHICLES_NUMBER)
+
+    def getCollidingVehiclesIDList(self):
+        """getCollidingVehiclesIDList() -> list(string)
+        Return Ids of vehicles involved in a collision (typically 2 per
+        collision).
+        """
+        return self._getUniversal(tc.VAR_COLLIDING_VEHICLES_IDS)
 
     def getMinExpectedNumber(self):
         """getMinExpectedNumber() -> integer
@@ -335,18 +356,24 @@ class SimulationDomain(Domain):
         self._connection._string += struct.pack("!BdBi", tc.TYPE_DOUBLE, depart, tc.TYPE_INTEGER, routingMode)
         return _readStage(self._connection._checkResult(tc.CMD_GET_SIM_VARIABLE, tc.FIND_ROUTE, ""))
 
-    def findIntermodalRoute(self, fromEdge, toEdge, modes="", depart=-1., routingMode=0, speed=-1., walkFactor=-1., departPos=-1., arrivalPos=-1., departPosLat=-1., ptype="", vtype=""):
+    def findIntermodalRoute(self, fromEdge, toEdge, modes="", depart=-1., routingMode=0, speed=-1.,
+                            walkFactor=-1., departPos=0., arrivalPos=tc.INVALID_DOUBLE_VALUE, departPosLat=0.,
+                            ptype="", vtype="", destStop=""):
         self._connection._beginMessage(tc.CMD_GET_SIM_VARIABLE, tc.FIND_INTERMODAL_ROUTE, "",
-                                       1 + 4 + 1 + 4 + len(fromEdge) + 1 + 4 + len(toEdge) + 1 + 4 + len(modes) + 1 + 8 + 1 + 4 + 1 + 8 + 1 + 8 + 1 + 8 + 1 + 8 + 1 + 8 + 1 + 4 + len(ptype) + 1 + 4 + len(vtype))
-        self._connection._string += struct.pack("!Bi", tc.TYPE_COMPOUND, 12)
+                                       1 + 4 + 1 + 4 + len(fromEdge) + 1 + 4 + len(toEdge) + 1 + 4 + len(modes) +
+                                       1 + 8 + 1 + 4 + 1 + 8 + 1 + 8 + 1 + 8 + 1 + 8 + 1 + 8 + 1 + 4 + len(ptype) +
+                                       1 + 4 + len(vtype) + 1 + 4 + len(destStop))
+        self._connection._string += struct.pack("!Bi", tc.TYPE_COMPOUND, 13)
         self._connection._packString(fromEdge)
         self._connection._packString(toEdge)
         self._connection._packString(modes)
         self._connection._string += struct.pack("!BdBi", tc.TYPE_DOUBLE, depart, tc.TYPE_INTEGER, routingMode)
         self._connection._string += struct.pack("!BdBd", tc.TYPE_DOUBLE, speed, tc.TYPE_DOUBLE, walkFactor)
-        self._connection._string += struct.pack("!BdBdBd", tc.TYPE_DOUBLE, departPos, tc.TYPE_DOUBLE, arrivalPos, tc.TYPE_DOUBLE, departPosLat)
+        self._connection._string += struct.pack("!BdBd", tc.TYPE_DOUBLE, departPos, tc.TYPE_DOUBLE, arrivalPos)
+        self._connection._string += struct.pack("!Bd", tc.TYPE_DOUBLE, departPosLat)
         self._connection._packString(ptype)
         self._connection._packString(vtype)
+        self._connection._packString(destStop)
         answer = self._connection._checkResult(tc.CMD_GET_SIM_VARIABLE, tc.FIND_INTERMODAL_ROUTE, "")
         result = []
         for c in range(answer.readInt()):

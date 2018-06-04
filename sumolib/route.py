@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
-# Copyright (C) 2009-2017 German Aerospace Center (DLR) and others.
+# Copyright (C) 2009-2018 German Aerospace Center (DLR) and others.
 # This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v2.0
 # which accompanies this distribution, and is available at
 # http://www.eclipse.org/legal/epl-v20.html
+# SPDX-License-Identifier: EPL-2.0
 
 # @file    route.py
 # @author  Michael Behrisch
@@ -33,7 +34,8 @@ def _getMinPath(paths):
 
 def mapTrace(trace, net, delta, verbose=False):
     """
-    matching a list of 2D positions to consecutive edges in a network
+    matching a list of 2D positions to consecutive edges in a network.
+    The positions are assumed to be dense (i.e. covering each edge of the route) and in the correct order.
     """
     result = ()
     paths = {}
@@ -43,7 +45,7 @@ def mapTrace(trace, net, delta, verbose=False):
         newPaths = {}
         candidates = net.getNeighboringEdges(pos[0], pos[1], delta)
         if len(candidates) == 0 and verbose:
-            print("Found no candidate edges for %s" % pos)
+            print("Found no candidate edges for %s,%s" % pos)
         for edge, d in candidates:
             base = polygonOffsetWithMinimumDistanceToPoint(pos, edge.getShape())
             if paths:

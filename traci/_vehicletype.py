@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 # Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
-# Copyright (C) 2008-2017 German Aerospace Center (DLR) and others.
+# Copyright (C) 2008-2018 German Aerospace Center (DLR) and others.
 # This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v2.0
 # which accompanies this distribution, and is available at
 # http://www.eclipse.org/legal/epl-v20.html
+# SPDX-License-Identifier: EPL-2.0
 
 # @file    _vehicletype.py
 # @author  Michael Behrisch
@@ -373,8 +374,8 @@ class VehicleTypeDomain(Domain):
         """
         self._connection._beginMessage(
             tc.CMD_SET_VEHICLETYPE_VARIABLE, tc.VAR_COLOR, typeID, 1 + 1 + 1 + 1 + 1)
-        self._connection._string += struct.pack("!BBBBB", tc.TYPE_COLOR, int(
-            color[0]), int(color[1]), int(color[2]), int(color[3]))
+        self._connection._string += struct.pack("!BBBBB", tc.TYPE_COLOR, int(color[0]), int(color[1]), int(color[2]),
+                                                int(color[3]) if len(color) > 3 else 255)
         self._connection._sendExact()
 
     def copy(self, origTypeID, newTypeID):

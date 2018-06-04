@@ -1,9 +1,10 @@
 # Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
-# Copyright (C) 2008-2017 German Aerospace Center (DLR) and others.
+# Copyright (C) 2008-2018 German Aerospace Center (DLR) and others.
 # This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v2.0
 # which accompanies this distribution, and is available at
 # http://www.eclipse.org/legal/epl-v20.html
+# SPDX-License-Identifier: EPL-2.0
 
 # @file    __init__.py
 # @author  Daniel Krajzewicz
@@ -175,8 +176,8 @@ class Net:
             self._id2edge[id] = e
         return self._id2edge[id]
 
-    def addLane(self, edge, speed, length, allow=None, disallow=None):
-        return lane.Lane(edge, speed, length, allow, disallow)
+    def addLane(self, edge, speed, length, width, allow=None, disallow=None):
+        return lane.Lane(edge, speed, length, width, allow, disallow)
 
     def addRoundabout(self, nodes, edges=None):
         r = roundabout.Roundabout(nodes, edges)
@@ -189,6 +190,16 @@ class Net:
         fromEdge.addOutgoing(conn)
         fromlane.addOutgoing(conn)
         toEdge._addIncoming(conn)
+        if viaLaneID:
+            try:
+                # internal lanes are only available when building with option withInternal=True
+                viaLane = self.getLane(viaLaneID)
+                viaEdge = viaLane.getEdge()
+                viaEdge._addIncoming(connection.Connection(
+                    fromEdge, viaEdge, fromlane, viaLane, direction, tls,
+                    tllink, state, ''))
+            except:
+                pass
 
     def getEdges(self):
         return self._edges
@@ -301,7 +312,16 @@ class Net:
     def forbids(self, possProhibitor, possProhibited):
         return possProhibitor.getFrom().getToNode().forbids(possProhibitor, possProhibited)
 
-    def getDownstreamEdges(self, edge, distance, stopOnTLS):
+    def getDownstreamEdges(self, edge, distance, stopOnTLS, stopOnTurnaround):
+        """return a list of lists of the form
+           [[firstEdge, pos, [edge_0, edge_1, ..., edge_k], aborted], ...]
+           where
+             firstEdge: is the downstream edge furthest away from the intersection,
+             [edge_0, ..., edge_k]: is the list of edges from the intersection downstream to firstEdge
+             pos: is the position on firstEdge with distance to the end of the input edge
+             aborted: a flag indicating whether the downstream
+                 search stopped at a TLS or a node without incoming edges before reaching the distance threshold
+        """
         ret = []
         seen = set()
         toProc = []
@@ -319,17 +339,20 @@ class Net:
                 ret.append([ie[0], ie[0].getLength() + ie[1], ie[2], True])
                 continue
             mn = []
-            hadTLS = False
+            stop = False
             for ci in ie[0]._incoming:
                 if ci not in seen:
                     prev = copy(ie[2])
-                    if stopOnTLS and ci._tls and ci != edge and not hadTLS:
+                    if stopOnTLS and ci._tls and ci != edge and not stop:
                         ret.append([ie[0], ie[1], prev, True])
-                        hadTLS = True
+                        stop = True
+                    elif stopOnTurnaround and ie[0]._incoming[ci][0].getDirection() == Connection.LINKDIR_TURN and not stop:
+                        ret.append([ie[0], ie[1], prev, True])
+                        stop = True
                     else:
                         prev.append(ie[0])
                         mn.append([ci, ie[0].getLength() + ie[1], prev])
-            if not hadTLS:
+            if not stop:
                 toProc.extend(mn)
         return ret
 
@@ -450,9 +473,12 @@ class NetReader(handler.ContentHandler):
                 self._currentEdge,
                 float(attrs['speed']),
                 float(attrs['length']),
+                float(attrs.get('width', 3.2)),
                 attrs.get('allow'),
                 attrs.get('disallow'))
             self._currentLane.setShape(convertShape(attrs.get('shape', '')))
+        if name == 'neigh' and self._currentLane is not None:
+            self._currentLane.setNeigh(attrs['lane'])
         if name == 'junction':
             if attrs['id'][0] != ':':
                 intLanes = None
@@ -583,6 +609,18 @@ def convertShape(shapeString):
 
 
 def readNet(filename, **others):
+    """ load a .net.xml file
+    The following named options are supported:
+
+        'net' : initialize data structurs with an existing net object (default Net())
+        'withPrograms' : import all traffic light programs (default False)
+        'withLatestPrograms' : import only the last program for each traffic light.
+                               This is the program that would be active in sumo by default.
+                               (default False)
+        'withConnections' : import all connections (default True)
+        'withFoes' : import right-of-way information (default True)
+        'withInternal' : import internal edges and lanes (default False)
+    """
     netreader = NetReader(**others)
     try:
         if not os.path.isfile(filename):

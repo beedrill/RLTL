@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 # Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
-# Copyright (C) 2011-2017 German Aerospace Center (DLR) and others.
+# Copyright (C) 2011-2018 German Aerospace Center (DLR) and others.
 # This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v2.0
 # which accompanies this distribution, and is available at
 # http://www.eclipse.org/legal/epl-v20.html
+# SPDX-License-Identifier: EPL-2.0
 
 # @file    xml.py
 # @author  Michael Behrisch
@@ -16,10 +17,12 @@ from __future__ import print_function
 from __future__ import absolute_import
 import sys
 import re
+import datetime
 import xml.etree.cElementTree as ET
 from collections import namedtuple, OrderedDict
 from keyword import iskeyword
 from functools import reduce
+import xml.sax.saxutils
 
 
 def _prefix_keyword(name, warn=False):
@@ -252,3 +255,21 @@ def parse_fast(xmlfile, element_name, attrnames, warn=False, optional=False):
                 yield Record(**m.groupdict())
             else:
                 yield Record(*m.groups())
+
+
+def writeHeader(outf, script, root=None, schemaPath=None):
+    outf.write("""<?xml version="1.0" encoding="UTF-8"?>
+<!-- generated on %s by %s
+  options: %s
+-->
+""" % (datetime.datetime.now(), script,
+       (' '.join(sys.argv[1:]).replace('--', '<doubleminus>'))))
+    if root is not None:
+        if schemaPath is None:
+            schemaPath = root + "_file.xsd"
+        outf.write('<%s xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/%s">\n' % (root, schemaPath))
+
+def quoteattr(val):
+    # saxutils sometimes uses single quotes around the attribute
+    # we can prevent this by adding an artificial single quote to the value and removing it again
+    return '"' + xml.sax.saxutils.quoteattr("'" + val)[2:]

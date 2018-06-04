@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 # Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
-# Copyright (C) 2011-2017 German Aerospace Center (DLR) and others.
+# Copyright (C) 2011-2018 German Aerospace Center (DLR) and others.
 # This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v2.0
 # which accompanies this distribution, and is available at
 # http://www.eclipse.org/legal/epl-v20.html
+# SPDX-License-Identifier: EPL-2.0
 
 # @file    _vehicle.py
 # @author  Michael Behrisch
@@ -69,6 +70,7 @@ def _readNextTLS(result):
 
 _RETURN_VALUE_FUNC = {tc.VAR_SPEED: Storage.readDouble,
                       tc.VAR_SPEED_WITHOUT_TRACI: Storage.readDouble,
+                      tc.VAR_ACCELERATION: Storage.readDouble,
                       tc.VAR_POSITION: lambda result: result.read("!dd"),
                       tc.VAR_POSITION3D: lambda result: result.read("!ddd"),
                       tc.VAR_ANGLE: Storage.readDouble,
@@ -103,6 +105,7 @@ _RETURN_VALUE_FUNC = {tc.VAR_SPEED: Storage.readDouble,
                       tc.VAR_EMISSIONCLASS: Storage.readString,
                       tc.VAR_WAITING_TIME: Storage.readDouble,
                       tc.VAR_ACCUMULATED_WAITING_TIME: Storage.readDouble,
+                      tc.VAR_LANECHANGE_MODE: Storage.readInt,
                       tc.VAR_SPEEDSETMODE: Storage.readInt,
                       tc.VAR_SLOPE: Storage.readDouble,
                       tc.VAR_WIDTH: Storage.readDouble,
@@ -164,6 +167,13 @@ class VehicleDomain(Domain):
         Returns the speed in m/s of the named vehicle within the last step.
         """
         return self._getUniversal(tc.VAR_SPEED, vehID)
+
+    def getAcceleration(self, vehID):
+        """getSpeed(string) -> double
+
+        Returns the acceleration in m/s^2 of the named vehicle within the last step.
+        """
+        return self._getUniversal(tc.VAR_ACCELERATION, vehID)
 
     def getSpeedWithoutTraCI(self, vehID):
         """getSpeedWithoutTraCI(string) -> double
@@ -452,6 +462,13 @@ class VehicleDomain(Domain):
         """
         return self._getUniversal(tc.VAR_ACCUMULATED_WAITING_TIME, vehID)
 
+    def getLaneChangeMode(self, vehID):
+        """getLaneChangeMode(string) -> integer
+
+        Gets the vehicle's lane change mode as a bitset.
+        """
+        return self._getUniversal(tc.VAR_LANECHANGE_MODE, vehID)
+
     def getSpeedMode(self, vehID):
         """getSpeedMode -> int
         The speed mode of a vehicle
@@ -681,6 +698,34 @@ class VehicleDomain(Domain):
         result = self._connection._checkResult(tc.CMD_GET_VEHICLE_VARIABLE, tc.CMD_CHANGELANE, vehID)
         return result.read("!iBiBi")[2::2]  # ignore num compounds and type int
 
+    def getLaneChangeStatePretty(self, vehID, direction):
+        """getLaneChangeState(string, int) -> ([string, ...], [string, ...])
+        Return the lane change state for the vehicle as a list of string constants
+        """
+        constants = {
+                0 : 'stay',
+                1 : 'left',
+                2 : 'right',
+                3 : 'strategic',
+                4 : 'cooperative',
+                5 : 'speedGain',
+                6 : 'keepRight',
+                7 : 'TraCI',
+                8 : 'urgent',
+                9 : 'blocked by left leader',
+                10: 'blocked by left follower',
+                11: 'blocked by right leader',
+                12: 'bloecked by right follower',
+                13: 'overlapping',
+                14: 'insufficient space',
+                15: 'sublane',
+                }
+        def prettifyBitstring(intval):
+            return [v for k,v in constants.items() if (intval & 2**k)]
+
+        state, stateTraCI = self.getLaneChangeState(vehID, direction)
+        return prettifyBitstring(state), prettifyBitstring(stateTraCI)
+
     def couldChangeLane(self, vehID, direction):
         """couldChangeLane(string, int) -> bool
         Return whether the vehicle could change lanes in the specified direction
@@ -786,10 +831,23 @@ class VehicleDomain(Domain):
         the lane will be chosen for the given amount of time (in ms).
         """
         self._connection._beginMessage(
-            tc.CMD_SET_VEHICLE_VARIABLE, tc.CMD_CHANGELANE, vehID, 1 + 4 + 1 + 1 + 1 + 4)
+            tc.CMD_SET_VEHICLE_VARIABLE, tc.CMD_CHANGELANE, vehID, 1 + 4 + 1 + 1 + 1 + 4 + 1 +1)
         self._connection._string += struct.pack(
-            "!BiBBBi", tc.TYPE_COMPOUND, 2, tc.TYPE_BYTE, laneIndex, tc.TYPE_INTEGER, duration)
+            "!BiBBBiBB", tc.TYPE_COMPOUND, 3, tc.TYPE_BYTE, laneIndex, tc.TYPE_INTEGER, duration, tc.TYPE_BYTE, 0)
         self._connection._sendExact()
+        
+    def changeLaneRelative(self, vehID, laneIndex, duration):
+        """changeLane(string, int, int) -> None
+
+        Forces a relative lane change; if successful,
+        the lane will be chosen for the given amount of time (in ms).
+        """
+        self._connection._beginMessage(
+            tc.CMD_SET_VEHICLE_VARIABLE, tc.CMD_CHANGELANE, vehID, 1 + 4 + 1 + 1 + 1 + 4 + 1 +1)
+        self._connection._string += struct.pack(
+            "!BiBBBiBB", tc.TYPE_COMPOUND, 3, tc.TYPE_BYTE, laneIndex, tc.TYPE_INTEGER, duration, tc.TYPE_BYTE, 1)
+        self._connection._sendExact()
+        
 
     def changeSublane(self, vehID, latDist):
         """changeLane(string, double) -> None
@@ -988,14 +1046,14 @@ class VehicleDomain(Domain):
 
     def setColor(self, vehID, color):
         """setColor(string, (integer, integer, integer, integer))
-        sets color for vehicle with the given ID.
-        i.e. (255,0,0,0) for the color red.
-        The fourth integer (alpha) is only used when drawing vehicles with raster images
+
+        Sets the color for the vehicle with the given ID, i.e. (255,0,0) for the color red.
+        The fourth component (alpha) is optional.
         """
         self._connection._beginMessage(
             tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_COLOR, vehID, 1 + 1 + 1 + 1 + 1)
-        self._connection._string += struct.pack("!BBBBB", tc.TYPE_COLOR, int(
-            color[0]), int(color[1]), int(color[2]), int(color[3]))
+        self._connection._string += struct.pack("!BBBBB", tc.TYPE_COLOR, int(color[0]), int(color[1]), int(color[2]),
+                                                int(color[3]) if len(color) > 3 else 255)
         self._connection._sendExact()
 
     def setLength(self, vehID, length):
