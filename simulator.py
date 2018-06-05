@@ -245,12 +245,17 @@ class Simulator():
         self.is_started = False
         
     def reset(self):
+        self._reset()
+        
+    def _reset(self):
         if self.is_started == True:
             self.stop()
         if self.whole_day and self.reset_to_same_time == False:
             self.flow_manager.travel_to_random_time()
         self.veh_list = {}
         self.time = 0
+        if self.visual == False:
+            reload(libsumo)
         self.start()            
         #print state
         #print len(state)
