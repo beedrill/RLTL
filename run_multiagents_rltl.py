@@ -83,6 +83,7 @@ def create_model(window, input_shape, num_actions,
 
     with tf.name_scope('fc'):
         fc = Dense(512, activation='relu')(fc_in)
+    #fc = fc_in
     with tf.name_scope('output'):
         output = Dense(num_actions, activation='linear')(fc)
         
@@ -159,7 +160,7 @@ def main():
 
     ## PARAMS ##
 
-    num_episodes = 150
+    num_episodes = 1500
     episode_time = 3000  # must be less than 3600
     num_iterations = num_episodes * episode_time
     memory_size = 100000
@@ -174,25 +175,25 @@ def main():
     stride = 0  # stride/skip of states
     #pdb.set_trace()
     if args.pysumo:
-        import pysumo
+        import libsumo
         env = Simulator(episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        num_traffic_state = 10,
-                        map_file='map/1-intersection/traffic.net.xml',
-                        route_file='map/1-intersection/traffic.rou.xml',  
+                        num_traffic_state = 11,
+                        map_file='map/5-intersections/whole-day-flow/traffic.net.xml',
+                        route_file='map/5-intersections/whole-day-flow/traffic-0.rou.xml',  
                         whole_day = args.whole_day, 
-                        flow_manager_file_prefix='map/1-intersection/traffic',
+                        flow_manager_file_prefix='map/5-intersections/whole-day-flow/traffic',
                         state_representation = args.phase_representation)
     else:
         import traci
         env = Simulator(visual=True,
                         episode_time=episode_time,
-                        num_traffic_state = 10,
+                        num_traffic_state = 11,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/1-intersection/traffic.net.xml',
-                        route_file='map/1-intersection/traffic.rou.xml', 
+                        map_file='map/5-intersections/whole-day-flow/traffic.net.xml',
+                        route_file='map/5-intersections/whole-day-flow/traffic-0.rou.xml', 
                         whole_day = args.whole_day,
-                        flow_manager_file_prefix='map/whole-day-flow/traffic',
+                        flow_manager_file_prefix='map/5-intersections/whole-day-flow/traffic',
                         state_representation = args.phase_representation)
         if args.sumo:
             env.cmd[0] = 'sumo'

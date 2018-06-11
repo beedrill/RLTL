@@ -1,4 +1,7 @@
-import libsumo
+try:
+    import libsumo
+except ImportError:
+    print 'libsumo not installed properly, please use traci only'
 # comment this line if you dont have pysumo and set visual = True, it should still run traci
 
 import traci
@@ -245,7 +248,7 @@ class Simulator():
         self.is_started = False
         
     def reset(self):
-        self._reset()
+        return self._reset()
         
     def _reset(self):
         if self.is_started == True:
@@ -254,8 +257,8 @@ class Simulator():
             self.flow_manager.travel_to_random_time()
         self.veh_list = {}
         self.time = 0
-        if self.visual == False:
-            reload(libsumo)
+       #S if self.visual == False:
+            #reload(libsumo)
         self.start()            
         #print state
         #print len(state)
@@ -345,12 +348,14 @@ class Lane():
 
     def _get_vehicles(self):
         if self.simulator.visual == False:
-            return libsumo.lane_getLastStepVehicleIDs(self.id)
+            return list(libsumo.lane_getLastStepVehicleIDs(self.id))
+        
         else:
             return traci.lane.getLastStepVehicleIDs(self.id)
         
     def step(self):
         vidlist = self._get_vehicles()
+        
         self.vehicle_list = vidlist
         self.car_number = len(vidlist)
         self.detected_car_number = 0
@@ -384,6 +389,7 @@ class Vehicle():
     def _update_speed(self):
         if self.simulator.visual == False:
             self.speed = libsumo.vehicle_getSpeed(self.id)
+            #print 'vehicle_getSpeed:', type(self.speed), self.speed
             return 
         else:
             self.speed = traci.vehicle.getSpeed(self.id)
@@ -392,6 +398,7 @@ class Vehicle():
     def _update_lane_position(self):
         if self.simulator.visual == False:
             self.lane_position = self.lane.length - libsumo.vehicle_getLanePosition(self.id)
+            #print 'vehicle_getLanePosition:', type(self.lane_position), self.lane_position
             return
         else:
             self.lane_position = self.lane.length - traci.vehicle.getLanePosition(self.id)

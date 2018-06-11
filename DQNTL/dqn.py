@@ -516,6 +516,7 @@ class DQNAgent:
                 states.insert(0, np.zeros(states[0].shape))
 
             states = self.preprocessor.process_batch(states)
+            #print 'states:', states
             q_values = self.calc_q_values_model(np.array([states])).flatten()
             action = self.test_policy.select_action(q_values)
         else:
