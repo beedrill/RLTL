@@ -157,8 +157,8 @@ class Simulator():
         # 1 state for traffic light id
         # 1 for orange light indicator
         # 1 for current phase time
-        self.fixed_number_of_tl_states = 3
-        self.num_traffic_state = max_number_of_lanes * 3 + self.fixed_number_of_tl_states
+        self.fixed_number_of_tl_states = 4
+        self.num_traffic_state = max_number_of_lanes * 2 + self.fixed_number_of_tl_states
 
         number_of_tl = len(tl_list)
         tl_counter = 0
@@ -166,7 +166,7 @@ class Simulator():
     	    lanes_ordered_by_signal_order = list(traci.trafficlights.getControlledLanes(tlid))
     	    definition = traci.trafficlights.getCompleteRedYellowGreenDefinition(tlid)
     	    definition = str(traci.trafficlights.getCompleteRedYellowGreenDefinition(tlid))
-            signal_groups = [phase_definition.split('\n')[0] for phase_definition in definition.split('phaseDef: ')[1:]]
+            signal_groups = [phase_definition.split('\n')[0].lower() for phase_definition in definition.split('phaseDef: ')[1:]]
             normalized_id = tl_counter / float(number_of_tl)
             tl_counter += 1
             self.tl_list[tlid] = SimpleTrafficLight(tlid, self, num_traffic_state = self.num_traffic_state, lane_list = lanes_ordered_by_signal_order, signal_groups= signal_groups, fixed_number_of_tl_states= self.fixed_number_of_tl_states, normalized_id = normalized_id)
@@ -435,6 +435,7 @@ class TrafficLight():
     def _set_phase(self, phase):
         self.current_phase = phase
         if self.simulator.visual == False:
+            if libsumo.trafficlight_getPhase(self.id) !=
             libsumo.trafficlight_setRedYellowGreenState(self.id, self.signal_groups[phase])
             return
         else:
@@ -447,7 +448,7 @@ class TrafficLight():
 
 
 class SimpleTrafficLight(TrafficLight):
-    def __init__(self, tlid, simulator, max_phase_time= 40., min_phase_time = 5, yellow_time = 3, num_traffic_state = 11, lane_list = [], signal_groups=[], fixed_number_of_tl_states = 4, normalized_id=0):
+    def __init__(self, tlid, simulator, max_phase_time= 36., min_phase_time = 5, yellow_time = 6, num_traffic_state = 11, lane_list = [], signal_groups=[], fixed_number_of_tl_states = 4, normalized_id=0):
 
         TrafficLight.__init__(self, tlid, simulator)
         self.signal_groups = signal_groups
@@ -480,7 +481,7 @@ class SimpleTrafficLight(TrafficLight):
         self.traffic_state[0] = self.normalized_id
         self.traffic_state[1] = 1 if 'g' not in current_phase else -1
         self.traffic_state[2] = self.current_phase_time/float(self.max_time)
-
+        self.traffic_state[3] = 1 if self.is_left_turn() else 0
         lane_counter = 0
         for lane, light_color in set(zip(lane_list,current_phase)):
                 sign_phase = 1.0
@@ -505,28 +506,39 @@ class SimpleTrafficLight(TrafficLight):
         self.current_phase_time += 1
         # make sure this phrase remain to keep track on current phase time
 
-        if self.check_allow_change_phase():
-            if action == 1 or self.current_phase_time > self.max_time:
-                self.move_to_next_phase()
-        elif 'y' in self.signal_groups[self.current_phase]:
+        if self.is_left_turn() and action == 1:
+            self.move_to_next_phase()
+        elif self.is_orange_light():
             # yellow phase, action doesn't affect
             if self.current_phase_time > self.yellow_time:
                 self.move_to_next_phase()
-            # if no appropriate action is given, phase doesn't change
-            # if self.current_phase_time > self.yellow_time and self.correct_action(action):
-            #     self.move_to_next_phase()
+        elif self.min_duration_has_passed():
+            if action == 1 or self.current_phase_time > self.max_time:
+                self.move_to_next_phase()
         self.updateRLParameters()
         # make sure this method is called last to avoid error
 
-    def check_allow_change_phase(self):
-        if 'y' not in self.signal_groups[self.current_phase]:
-            if self.current_phase_time>self.min_phase_time:
-                #print self.current_phase_time, self.min_phase_time
-                return True
-        return False
+    def min_duration_has_passed(self):
+        return self.current_phase_time > self.min_phase_time
+
+
+
+    def is_orange_light(self):
+        return 'y' in self.signal_groups[self.current_phase]
+
+    def is_left_turn(self):
+        is_orange_before_left_turn =  'y' in self.signal_groups[self.current_phase] and 'g' in self.signal_groups[self.current_phase]
+        is_left_turn_only_green =  'y' in self.signal_groups[self.last_phase()] and 'g' in self.signal_groups[self.last_phase()]
+        return is_orange_before_left_turn or is_left_turn_only_green
+
+    def next_phase(self):
+        return (self.current_phase + 1) % len(self.signal_groups)
+
+    def last_phase(self):
+        return (self.current_phase - 1) % len(self.signal_groups)
 
     def move_to_next_phase(self):
-        self.current_phase = (self.current_phase + 1) % len(self.signal_groups)
+        self.current_phase = self.next_phase()
         self._set_phase(self.current_phase)
         self.current_phase_time = 0
 
