@@ -9,58 +9,6 @@ from time import time
 import numpy as np
 import random
 
-class SimpleFlowManager():
-    def __init__(self, simulator,
-                 rush_hour_file = 'map/traffic-dense.rou.xml',
-                 normal_hour_file = 'map/traffic-medium.rou.xml',
-                 midnight_file = 'map/traffic-sparse.rou.xml'):
-
-        self.rush_hour_file = rush_hour_file
-        self.normal_hour_file = normal_hour_file
-        self.midnight_file = midnight_file
-        self.sim = simulator
-
-    def travel_to_random_time(self):
-        t = random.randint(0,23)
-        self.travel_to_time(t)
-
-
-    def travel_to_time(self,t):
-        route_file = self.get_carflow(t)
-        self.sim.route_file = route_file
-        self.sim.current_day_time = t
-        self.sim.cmd[4] = route_file
-        print 'successfully travel to time: ', t
-
-    def get_carflow(self, t):
-        if t >= 0 and t <=7:
-            return self.midnight_file
-
-        if t > 7 and t <= 9:
-            return self.rush_hour_file
-
-        if t > 9 and t <= 16:
-            return self.normal_hour_file
-
-        if t > 16 and t <= 19:
-            return self.rush_hour_file
-
-        if t > 19 and t <= 22:
-            return self.normal_hour_file
-
-        if t >22 and t <= 24:
-            return self.midnight_file
-
-        print 'time:', t, 'is not a supported input, put something between 0 to 24'
-
-class HourlyFlowManager(SimpleFlowManager):
-    def __init__(self, simulator, file_name = 'map/whole-day-flow/traffic'):
-        self.sim = simulator
-        self.file_name =file_name
-
-    def get_carflow(self,t):
-        return self.file_name+'-{}.rou.xml'.format(int(t))
-
 class Simulator():
     """
     mimic openAI gym environment
@@ -82,8 +30,11 @@ class Simulator():
                  gui_setting_file = "map/view.settings.xml",
                  penetration_rate = 1,
                  record_file = "record.txt",
-                 whole_day = False,
-                 flow_manager_file_prefix = 'map/whole-day-flow/traffic'):
+                 simple=False,
+                 aggregated_reward = False):
+
+        self.aggregated_reward = aggregated_reward
+        self.simple_inputs = simple
         self.visual = visual
         self.map_file = map_file
         self.end_time = end_time
@@ -103,7 +54,6 @@ class Simulator():
         ##############
         self.episode_time = episode_time
         self.action_space = ActionSpaces(len(self.tl_list), 2) # action = 1 means move to next phase, otherwise means stay in current phase
-        self.whole_day = whole_day
         self.current_day_time = 0 # this is a value from 0 to 24
 
 
@@ -122,9 +72,6 @@ class Simulator():
                   '--route-files', self.route_file,
                   '--end', str(self.end_time)]
 
-        if whole_day:
-            self.flow_manager = HourlyFlowManager(self, file_name=flow_manager_file_prefix)
-            self.flow_manager.travel_to_random_time() #this will travel to a random current_day_time and modifie the carflow accordingly
         if not additional_file == None:
             self.cmd+=['--additional-files', self.additional_file]
         if not gui_setting_file == None:
@@ -153,23 +100,29 @@ class Simulator():
             if len(lanes_ordered_by_signal_order) > max_number_of_lanes:
                 max_number_of_lanes = len(lanes_ordered_by_signal_order)
 
-        # 2 states per lane (number of cars + distance of closest car)
-        # 1 state for traffic light id
-        # 1 for orange light indicator
-        # 1 for current phase time
-        self.fixed_number_of_tl_states = 4
-        self.num_traffic_state = max_number_of_lanes * 2 + self.fixed_number_of_tl_states
+        if self.simple_inputs:
+            self.fixed_number_of_tl_states = 12
+            self.num_traffic_state = self.fixed_number_of_tl_states
+        else:
+            # 2 states per lane (number of cars + distance of closest car)
+            # 1 state for traffic light id
+            # 1 for orange light indicator
+            # 1 for current phase time
+            self.fixed_number_of_tl_states = 4
+            self.num_traffic_state = max_number_of_lanes * 2 + self.fixed_number_of_tl_states + 5
 
         number_of_tl = len(tl_list)
+        print("there are " + str(number_of_tl) + " controlled traffic lights")
         tl_counter = 0
         for tlid in tl_list:
     	    lanes_ordered_by_signal_order = list(traci.trafficlights.getControlledLanes(tlid))
     	    definition = traci.trafficlights.getCompleteRedYellowGreenDefinition(tlid)
     	    definition = str(traci.trafficlights.getCompleteRedYellowGreenDefinition(tlid))
-            signal_groups = [phase_definition.split('\n')[0].lower() for phase_definition in definition.split('phaseDef: ')[1:]]
+            signal_groups = [phase_definition.split('\n')[0] for phase_definition in definition.split('phaseDef: ')[1:]]
             normalized_id = tl_counter / float(number_of_tl)
             tl_counter += 1
-            self.tl_list[tlid] = SimpleTrafficLight(tlid, self, num_traffic_state = self.num_traffic_state, lane_list = lanes_ordered_by_signal_order, signal_groups= signal_groups, fixed_number_of_tl_states= self.fixed_number_of_tl_states, normalized_id = normalized_id)
+            number_of_phases = definition.count('Phase:')
+            self.tl_list[tlid] = SimpleTrafficLight(tlid, self, num_traffic_state = self.num_traffic_state, number_of_phases=number_of_phases, lane_list = lanes_ordered_by_signal_order, signal_groups= signal_groups, fixed_number_of_tl_states= self.fixed_number_of_tl_states, normalized_id = normalized_id, simple_inputs=self.simple_inputs)
 
         lane_list = traci.lane.getIDList()
         self.lane_list = {}
@@ -224,14 +177,20 @@ class Simulator():
         observation = []
         reward = []
         i = 0
-        total_reward = sum([self.tl_list[tlid].reward for tlid in self.tl_id_list])
+
         for tlid in self.tl_id_list:
             tl = self.tl_list[tlid]
             #print actions
             tl.step(actions[i])
             observation.append(tl.traffic_state)
-            reward.append(total_reward)
+            if not self.aggregated_reward:
+                reward.append(tl.reward)
             i += 1
+
+        if self.aggregated_reward:
+            total_reward = sum([self.tl_list[tlid].reward for tlid in self.tl_id_list])
+            for tlid in self.tl_id_list:
+                reward.append(total_reward)
 
         #print reward
         observation = np.array(observation)
@@ -260,8 +219,6 @@ class Simulator():
     def _reset(self):
         if self.is_started == True:
             self.stop()
-        if self.whole_day and self.reset_to_same_time == False:
-            self.flow_manager.travel_to_random_time()
         self.veh_list = {}
         self.time = 0
        #S if self.visual == False:
@@ -435,7 +392,6 @@ class TrafficLight():
     def _set_phase(self, phase):
         self.current_phase = phase
         if self.simulator.visual == False:
-            if libsumo.trafficlight_getPhase(self.id) !=
             libsumo.trafficlight_setRedYellowGreenState(self.id, self.signal_groups[phase])
             return
         else:
@@ -448,7 +404,7 @@ class TrafficLight():
 
 
 class SimpleTrafficLight(TrafficLight):
-    def __init__(self, tlid, simulator, max_phase_time= 36., min_phase_time = 5, yellow_time = 6, num_traffic_state = 11, lane_list = [], signal_groups=[], fixed_number_of_tl_states = 4, normalized_id=0):
+    def __init__(self, tlid, simulator, max_phase_time= 40., number_of_phases=4, min_phase_time = 5, yellow_time = 3, num_traffic_state = 11, lane_list = [], signal_groups=[], fixed_number_of_tl_states = 4, normalized_id=0, simple_inputs=False):
 
         TrafficLight.__init__(self, tlid, simulator)
         self.signal_groups = signal_groups
@@ -458,6 +414,7 @@ class SimpleTrafficLight(TrafficLight):
         self.min_phase_time = min_phase_time
         self.yellow_time = yellow_time
         self.number_of_lanes = len(set(lane_list))
+        self.number_of_phases = number_of_phases
         # Traffic State 1
         # (car num, .. , dist to TL, .., current phase time)
         self.num_traffic_state = num_traffic_state
@@ -466,9 +423,15 @@ class SimpleTrafficLight(TrafficLight):
         self.reward = None
         self.fixed_number_of_tl_states = fixed_number_of_tl_states
         self.normalized_id = normalized_id
+        self.simple_inputs = simple_inputs
+        if self.simple_inputs:
+            self.updateRLParameters = self.updateRLParameters_simple
+        else:
+            self.updateRLParameters = self.updateRLParameters_normal
 
 
-    def updateRLParameters(self):
+
+    def updateRLParameters_normal(self):
         lane_list = self.lane_list
         sim = self.simulator
         self.reward = 0
@@ -502,6 +465,42 @@ class SimpleTrafficLight(TrafficLight):
                 self.reward += sim.lane_list[lane].lane_reward
                 lane_counter += 1
 
+
+    def updateRLParameters_simple(self):
+        lane_list = self.lane_list
+        sim = self.simulator
+        self.reward = 0
+        current_phase = str(self.signal_groups[self.current_phase]).lower()
+        distributions = [[], []]
+        # Traffic State 1
+        for i in range(0, len(self.traffic_state)):
+            self.traffic_state[i] = 0
+        for lane, light_color in set(zip(lane_list,str(current_phase))):
+            i = 0
+            if light_color == 'r' or light_color == 'y':
+                i = 1
+            car_normalizing_number = sim.lane_list[lane].length
+            self.traffic_state[i] += sim.lane_list[lane].detected_car_number/car_normalizing_number
+            distributions[i].append(sim.lane_list[lane].detected_car_number/car_normalizing_number)
+            for vid in sim.lane_list[lane].vehicle_list:
+                v = sim.veh_list[vid]
+                if v.equipped == False:
+                    continue
+                if v.lane_position < self.traffic_state[i+2] or self.traffic_state[i+2] == 0:
+                    self.traffic_state[i+2] = sim.veh_list[vid].lane_position / car_normalizing_number
+            self.reward += sim.lane_list[lane].lane_reward
+        self.traffic_state[2] = 1 - self.traffic_state[2]
+        self.traffic_state[3] = 1 - self.traffic_state[3]
+        self.traffic_state[4] = np.std(distributions[0]) if distributions[0] else 0
+        self.traffic_state[5] = np.std(distributions[1]) if distributions[1] else 0
+        self.traffic_state[6] = self.number_of_phases / 10.0 # generalize to max number of phases
+        self.traffic_state[7] = current_phase.count('g')/float(len(lane_list))
+        self.traffic_state[8] = self.current_phase_time/float(self.max_time)
+        self.traffic_state[9] = 1 if 'g' not in current_phase else -1
+        self.traffic_state[10] = self.normalized_id
+        self.traffic_state[11] = 1 if self.is_left_turn() else 0
+
+
     def step(self, action):
         self.current_phase_time += 1
         # make sure this phrase remain to keep track on current phase time
@@ -516,20 +515,17 @@ class SimpleTrafficLight(TrafficLight):
             if action == 1 or self.current_phase_time > self.max_time:
                 self.move_to_next_phase()
         self.updateRLParameters()
-        # make sure this method is called last to avoid error
 
     def min_duration_has_passed(self):
         return self.current_phase_time > self.min_phase_time
-
-
 
     def is_orange_light(self):
         return 'y' in self.signal_groups[self.current_phase]
 
     def is_left_turn(self):
-        is_orange_before_left_turn =  'y' in self.signal_groups[self.current_phase] and 'g' in self.signal_groups[self.current_phase]
-        is_left_turn_only_green =  'y' in self.signal_groups[self.last_phase()] and 'g' in self.signal_groups[self.last_phase()]
-        return is_orange_before_left_turn or is_left_turn_only_green
+        #is_orange_before_left_turn =  'y' in self.signal_groups[self.current_phase] and 'g' in self.signal_groups[self.current_phase]
+        is_left_turn_only_green =  'y' in self.signal_groups[self.last_phase()] and 'g' in self.signal_groups[self.last_phase()].lower()
+        return is_left_turn_only_green
 
     def next_phase(self):
         return (self.current_phase + 1) % len(self.signal_groups)
@@ -538,7 +534,7 @@ class SimpleTrafficLight(TrafficLight):
         return (self.current_phase - 1) % len(self.signal_groups)
 
     def move_to_next_phase(self):
-        self.current_phase = self.next_phase()
+        self.current_phase = (self.current_phase + 1) % len(self.signal_groups)
         self._set_phase(self.current_phase)
         self.current_phase_time = 0
 

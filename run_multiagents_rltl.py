@@ -21,6 +21,7 @@ from DQNTL.policy import GreedyEpsilonPolicy, LinearDecayGreedyEpsilonPolicy
 from DQNTL.objectives import mean_huber_loss
 
 from simulator import Simulator
+from simulator_osm import Simulator as Simulator_osm
 
 import pdb ##TODO delete after debugging
 
@@ -86,12 +87,12 @@ def create_model(window, input_shape, num_actions,
     #fc = fc_in
     with tf.name_scope('output'):
         output = Dense(num_actions, activation='linear')(fc)
-        
-    with tf.name_scope(model_name):   
+
+    with tf.name_scope(model_name):
         model = Model(input=input, output=output)
-    
+
     return model
-        
+
 
 def get_output_folder(parent_dir, env_name):
     """Return save folder.
@@ -151,11 +152,16 @@ def main():
     parser.add_argument('--no_counter', action = 'store_true', default = False, help = 'no counter in saving files, note it might overwrite previous results')
     parser.add_argument('--penetration_rate', type = float, default = 1., help = 'specify penetration rate')
     parser.add_argument('--sumo', action='store_true', help='force to use non-gui sumo')
-    
-    parser.add_argument('--whole_day', action = 'store_true', help = 'specify the time of the day when training') 
+    parser.add_argument('--whole_day', action = 'store_true', help = 'specify the time of the day when training')
     parser.add_argument('--day_time', type = int, help = 'specify day time')
     parser.add_argument('--phase_representation', default = 'sign', help = 'specify representation')
-    
+    parser.add_argument('--shared_model', action='store_true', help='use a common model between all agents')
+    parser.add_argument('--simulator', choices=['original', 'osm'], default='osm')
+    parser.add_argument('--simple_inputs', action='store_true', help='use simplified inputs with fixed number of states (12)')
+    parser.add_argument('--map', choices=['osm_3_intersections', 'osm_13_intersections', 'manhattan_small','manhattan'], default='osm_13_intersections')
+    parser.add_argument('--aggregated_reward', action='store_true', help='choose to combine waiting times to optimize waiting time on entire network instead of individually at each TL')
+
+
     args = parser.parse_args()
 
     ## PARAMS ##
@@ -170,34 +176,39 @@ def main():
     num_burn_in = 10000
     train_freq = 1
     tl_state = 1
-    
+
     window = 1  # total size of the state
     stride = 0  # stride/skip of states
     #pdb.set_trace()
+
     if args.pysumo:
         import libsumo
-        env = Simulator(episode_time=episode_time,
-                        penetration_rate = args.penetration_rate,
-                        num_traffic_state = 11,
-                        map_file='map/5-intersections/whole-day-flow/traffic.net.xml',
-                        route_file='map/5-intersections/whole-day-flow/traffic-0.rou.xml',  
-                        whole_day = args.whole_day, 
-                        flow_manager_file_prefix='map/5-intersections/whole-day-flow/traffic',
-                        state_representation = args.phase_representation)
+        visual = False
     else:
         import traci
-        env = Simulator(visual=True,
+        visual = True
+
+    if args.simulator == 'original':
+        env = Simulator(visual=visual,
                         episode_time=episode_time,
                         num_traffic_state = 11,
                         penetration_rate = args.penetration_rate,
                         map_file='map/5-intersections/whole-day-flow/traffic.net.xml',
-                        route_file='map/5-intersections/whole-day-flow/traffic-0.rou.xml', 
+                        route_file='map/5-intersections/whole-day-flow/traffic-0.rou.xml',
                         whole_day = args.whole_day,
                         flow_manager_file_prefix='map/5-intersections/whole-day-flow/traffic',
                         state_representation = args.phase_representation)
-        if args.sumo:
-            env.cmd[0] = 'sumo'
-        
+    elif args.simulator == 'osm':
+        env = Simulator_osm(visual=visual,
+                        episode_time=episode_time,
+                        penetration_rate = args.penetration_rate,
+                        map_file='map/' + args.map + '/osm.net.xml',
+                        route_file='map/' + args.map + '/osm.passenger.rou.xml',
+                        simple = args.simple_inputs,
+                        aggregated_reward = args.aggregated_reward)
+
+
+
     id_list = env.tl_id_list
     num_agents = len(id_list)
     print num_agents
@@ -216,7 +227,7 @@ def main():
         return
 
     network = 'DQN'
-    
+
     # choose device
     device = '/gpu:{}'.format(args.gpu)
     if args.cpu:
@@ -228,21 +239,19 @@ def main():
 
     num_actions = env.action_space.n
     # print 'num_actions', num_actions
-    
+
     # memory grows as it requires
-    #This will assign the computation to CPU automatically whenever GPU is not available    
+    #This will assign the computation to CPU automatically whenever GPU is not available
     config = tf.ConfigProto(allow_soft_placement=True)
-    
+
     #config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
-    
+
     sess = tf.Session(config=config)
     K.set_session(sess)
-    
+
     with tf.device(device):
-    
-        # model
-        #model = create_model(window=window, input_shape=input_shape, num_actions=num_actions)
+        model = create_model(window=window, input_shape=input_shape, num_actions=num_actions)
         # memory
         memory = ReplayMemory(max_size=memory_size, window_length=window, stride=stride, state_input=buffer_input_shape)
         # policy
@@ -253,7 +262,8 @@ def main():
         index = 0
         for id in id_list:
             # agent
-            model = create_model(window=window, input_shape=input_shape, num_actions=num_actions)
+            if not args.shared_model:
+                model = create_model(window=window, input_shape=input_shape, num_actions=num_actions)
             agent = DQNAgent(
                 model=model,
                 preprocessor=preprocessor,
@@ -274,11 +284,11 @@ def main():
                 input_shape=input_shape,
                 stride=stride)
             index+=1
-            
+
             # compile
             agent.compile(optimizer=adam, loss_func=mean_huber_loss, metrics=['mae'])
             agent_list.append(agent)
-        
+
         agents = DQNAgents(
                 agent_list,
                 #model=model,
@@ -303,7 +313,7 @@ def main():
             for agent in agents.agents:
                 weight_name = args.load + '_' + agent.name + '.hdf5'
                 agent.model.load_weights(weight_name)
-    
+
         if args.mode == 'train':
             # log file
             logfile_name = network + '_log/'
@@ -318,20 +328,20 @@ def main():
                 weights_file = get_output_folder(weights_file_name, args.dir_name)
             else:
                 weights_file = weights_file_name+args.dir_name
-            
+
             os.makedirs(weights_file)
             weights_file += '/'
-            
+
             save_interval = num_iterations / 30  # save model every 1/3
             # print 'start training....'
             agents.fit(env=env, num_iterations=num_iterations, save_interval=save_interval, writer=writer, weights_file=weights_file)
-            
+
             # save weights
             for agent in agents.agents:
                 file_name = '{}_{}_{}_weights_{}.hdf5'.format(network, env_name, num_iterations, agent.name)
                 file_path = weights_file + file_name
                 agent.model.save_weights(file_path)
-            
+
         else:  # test
             if not args.load:
                 print 'please load a model'
@@ -342,10 +352,10 @@ def main():
                 #weight_name = "DQN_weights/TL-run23/DQN_SUMO_450000_weights_"+agent.name+".hdf5"
                 #weight_name = "DQN_weights/TL-run25/DQN_SUMO_best_weights_"+agent.name+".hdf5"
                 #agent.model.load_weights(weight_name)
-            
+
             #print model.layers[3].get_weights()
             #print 'number of layers',len(model.layers)
-            
+
             num_episodes = 1
             if args.whole_day:
                 env.flow_manager.travel_to_time(args.day_time)
@@ -355,14 +365,14 @@ def main():
             print 'Evaluation Result for average of {} episodes'.format(num_episodes)
             print 'average total reward: {} \noverall waiting time: {} \nequipped waiting time: {} \nunequipped waiting time: {}'\
                 .format(avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time)
-                
+
             if args.record:
                 record_file_name = 'record.txt'
                 f = open(record_file_name,'a')
                 f.write('{}\t{}\t{}\n'.format(overall_waiting_time,equipped_waiting_time,unequipped_waiting_time))
                 f.close()
             env.stop()
-    
+
 
 if __name__ == '__main__':
     main()
