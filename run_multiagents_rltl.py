@@ -160,6 +160,7 @@ def main():
     parser.add_argument('--simple_inputs', action='store_true', help='use simplified inputs with fixed number of states (12)')
     parser.add_argument('--map', choices=['osm_3_intersections', 'osm_13_intersections', 'manhattan_small','manhattan'], default='osm_13_intersections')
     parser.add_argument('--aggregated_reward', action='store_true', help='choose to combine waiting times to optimize waiting time on entire network instead of individually at each TL')
+    parser.add_argument('--routes', default='osm.passenger.rou.xml')
 
 
     args = parser.parse_args()
@@ -203,7 +204,7 @@ def main():
                         episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
                         map_file='map/' + args.map + '/osm.net.xml',
-                        route_file='map/' + args.map + '/osm.passenger.rou.xml',
+                        route_file='map/' + args.map + '/' + args.routes,
                         simple = args.simple_inputs,
                         aggregated_reward = args.aggregated_reward)
 
@@ -346,16 +347,6 @@ def main():
             if not args.load:
                 print 'please load a model'
                 return
-            #for agent in agents.agents:
-                # currently, remove after weights....
-                #weight_name = args.load + '_' + agent.name + '.hdf5'
-                #weight_name = "DQN_weights/TL-run23/DQN_SUMO_450000_weights_"+agent.name+".hdf5"
-                #weight_name = "DQN_weights/TL-run25/DQN_SUMO_best_weights_"+agent.name+".hdf5"
-                #agent.model.load_weights(weight_name)
-
-            #print model.layers[3].get_weights()
-            #print 'number of layers',len(model.layers)
-
             num_episodes = 1
             if args.whole_day:
                 env.flow_manager.travel_to_time(args.day_time)

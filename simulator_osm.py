@@ -442,6 +442,7 @@ class SimpleTrafficLight(TrafficLight):
     	    self.traffic_state[i] = 0
 
         self.traffic_state[0] = self.normalized_id
+        # 1 if there is an orange light else -1
         self.traffic_state[1] = 1 if 'g' not in current_phase else -1
         self.traffic_state[2] = self.current_phase_time/float(self.max_time)
         self.traffic_state[3] = 1 if self.is_left_turn() else 0
