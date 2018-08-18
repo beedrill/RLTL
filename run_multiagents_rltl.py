@@ -160,7 +160,7 @@ def main():
     parser.add_argument('--simple_inputs', action='store_true', help='use simplified inputs with fixed number of states (12)')
     parser.add_argument('--map', choices=['osm_3_intersections', 'osm_13_intersections', 'manhattan_small','manhattan'], default='osm_13_intersections')
     parser.add_argument('--aggregated_reward', action='store_true', help='choose to combine waiting times to optimize waiting time on entire network instead of individually at each TL')
-    parser.add_argument('--routes', default='osm.passenger.rou.xml')
+    parser.add_argument('--arrival_rate', default='1', help='arrival rate of cars')
 
 
     args = parser.parse_args()
@@ -203,8 +203,8 @@ def main():
         env = Simulator_osm(visual=visual,
                         episode_time=episode_time,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/' + args.map + '/osm.net.xml',
-                        route_file='map/' + args.map + '/' + args.routes,
+                        map_file= args.map,
+                        arrival_rate= args.arrival_rate,
                         simple = args.simple_inputs,
                         aggregated_reward = args.aggregated_reward)
 

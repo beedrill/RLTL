@@ -3,7 +3,7 @@ try:
 except ImportError:
     print 'libsumo not installed properly, please use traci only'
 # comment this line if you dont have pysumo and set visual = True, it should still run traci
-
+import subprocess
 import traci
 from time import time
 import numpy as np
@@ -23,8 +23,8 @@ class Simulator():
                 observation, reward, isterminal, info
     """
     def __init__(self, visual = False,
-                 map_file = 'map/traffic.net.xml',
-                 route_file = 'map/traffic.rou.xml',
+                 map_file = 'osm_3_intersections',
+                 arrival_rate = 1,
                  end_time = 3600, episode_time = 1000,
                  additional_file = None,
                  gui_setting_file = "map/view.settings.xml",
@@ -38,7 +38,7 @@ class Simulator():
         self.visual = visual
         self.map_file = map_file
         self.end_time = end_time
-        self.route_file = route_file
+        self.arrival_rate = arrival_rate
         self.additional_file = additional_file
         self.gui_setting_file = gui_setting_file
         self.veh_list = {}
@@ -57,19 +57,18 @@ class Simulator():
         self.current_day_time = 0 # this is a value from 0 to 24
 
 
-
         if self.visual == False:
             self.cmd = ['sumo',
-                  '--net-file', self.map_file,
-                  '--route-files', self.route_file,
+                  '--net-file', './map/' + self.map_file + '/osm.net.xml',
+                  '--route-files', './map/' + self.map_file + '/generated_flow.rou.xml',
                   '--end', str(self.end_time)]
             if not additional_file == None:
                 self.cmd+=['--additional-files', self.additional_file]
 
         else:
             self.cmd = ['sumo-gui',
-                  '--net-file', self.map_file,
-                  '--route-files', self.route_file,
+                  '--net-file', './map/' + self.map_file + '/osm.net.xml',
+                  '--route-files', './map/' + self.map_file + '/generated_flow.rou.xml',
                   '--end', str(self.end_time)]
 
         if not additional_file == None:
@@ -85,9 +84,10 @@ class Simulator():
             self.lane_list[l].step()
 
     def _init_sumo_info(self):
+        self._generate_flow()
         cmd = ['sumo',
-                  '--net-file', self.map_file,
-                  '--route-files', self.route_file,
+                  '--net-file', './map/' + self.map_file + '/osm.net.xml',
+                  '--route-files', './map/' + self.map_file + '/generated_flow.rou.xml',
                   '--end', str(self.end_time)]
         traci.start(cmd)
         #time.sleep(1)
@@ -132,7 +132,18 @@ class Simulator():
             self.lane_list[l] = Lane(l,self,penetration_rate=self.penetration_rate, length = traci.lane.getLength(l))
 
         traci.close()
+
+    def _generate_flow(self):
+        subprocess.call(['python', '/home/sumo/tools/randomTrips.py',
+          '-n', './map/' + self.map_file + '/osm.net.xml',
+          '-e', '3000',
+          '-p', str(1/float(self.arrival_rate)),
+          '--binomial', '5',
+          '--fringe-factor', '10',
+          '--route-file', './map/' + self.map_file + '/generated_flow.rou.xml'])
+
     def _simulation_start(self):
+        self._generate_flow()
         if self.visual == False:
             libsumo.start(self.cmd)
             return
