@@ -60,7 +60,7 @@ class Simulator():
         if self.visual == False:
             self.cmd = ['sumo',
                   '--net-file', './map/' + self.map_file + '/osm.net.xml',
-                  '--route-files', './map/' + self.map_file + '/generated_flow.rou.xml',
+                  '--route-files', './map/' + self.map_file + '/generated_flow_' + str(self.arrival_rate) + '.rou.xml',
                   '--end', str(self.end_time)]
             if not additional_file == None:
                 self.cmd+=['--additional-files', self.additional_file]
@@ -68,7 +68,7 @@ class Simulator():
         else:
             self.cmd = ['sumo-gui',
                   '--net-file', './map/' + self.map_file + '/osm.net.xml',
-                  '--route-files', './map/' + self.map_file + '/generated_flow.rou.xml',
+                  '--route-files', './map/' + self.map_file + '/generated_flow_' + str(self.arrival_rate) + '.rou.xml',
                   '--end', str(self.end_time)]
 
         if not additional_file == None:
@@ -87,7 +87,7 @@ class Simulator():
         self._generate_flow()
         cmd = ['sumo',
                   '--net-file', './map/' + self.map_file + '/osm.net.xml',
-                  '--route-files', './map/' + self.map_file + '/generated_flow.rou.xml',
+                  '--route-files', './map/' + self.map_file + '/generated_flow_' + str(self.arrival_rate) + '.rou.xml',
                   '--end', str(self.end_time)]
         traci.start(cmd)
         #time.sleep(1)
@@ -140,7 +140,7 @@ class Simulator():
           '-p', str(1/float(self.arrival_rate)),
           '--binomial', '5',
           '--fringe-factor', '10',
-          '--route-file', './map/' + self.map_file + '/generated_flow.rou.xml'])
+          '--route-file', './map/' + self.map_file + '/generated_flow_' + str(self.arrival_rate) + '.rou.xml'])
 
     def _simulation_start(self):
         self._generate_flow()
