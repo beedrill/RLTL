@@ -129,7 +129,7 @@ class Simulator():
         for l in lane_list:
             if l.startswith(':'):
                 continue
-            self.lane_list[l] = Lane(l,self,penetration_rate=self.penetration_rate, length = traci.lane.getLength(l))
+            self.lane_list[l] = Lane(l,self,penetration_rate=self.penetration_rate, length = traci.lane.getLength(l), max_speed=traci.lane.getMaxSpeed(l))
 
         traci.close()
 
@@ -305,7 +305,7 @@ class Simulator():
 
 
 class Lane():
-    def __init__(self,lane_id,simulator,length = 251,penetration_rate = 1):
+    def __init__(self,lane_id,simulator,length = 251,penetration_rate = 1, max_speed=15):
         self.id = lane_id
         self.simulator = simulator
         self.vehicle_list = []
@@ -314,11 +314,12 @@ class Lane():
         self.detected_car_number = 0
         self.lane_reward = 0
         self.penetration_rate = penetration_rate
+        self.max_speed = max_speed
 
     def update_lane_reward(self):
         self.lane_reward = 0
         for vid in self.vehicle_list:
-            self.lane_reward+=(Vehicle.max_speed - self.simulator.veh_list[vid].speed)/Vehicle.max_speed
+            self.lane_reward+=(self.max_speed - self.simulator.veh_list[vid].speed)/self.max_speed
         #self.lane_reward = - self.lane_reward
 
     def _get_vehicles(self):
@@ -351,7 +352,6 @@ class Lane():
 
 
 class Vehicle():
-    max_speed = 13.9
 
     def __init__(self, vid, simulator, equipped = True,):
         self.id = vid
