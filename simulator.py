@@ -11,53 +11,53 @@ import random
 
 class SimpleFlowManager():
     def __init__(self, simulator,
-                 rush_hour_file = 'map/traffic-dense.rou.xml', 
-                 normal_hour_file = 'map/traffic-medium.rou.xml', 
+                 rush_hour_file = 'map/traffic-dense.rou.xml',
+                 normal_hour_file = 'map/traffic-medium.rou.xml',
                  midnight_file = 'map/traffic-sparse.rou.xml'):
-                     
+
         self.rush_hour_file = rush_hour_file
         self.normal_hour_file = normal_hour_file
         self.midnight_file = midnight_file
         self.sim = simulator
-        
+
     def travel_to_random_time(self):
         t = random.randint(0,23)
         self.travel_to_time(t)
-        
-        
+
+
     def travel_to_time(self,t):
         route_file = self.get_carflow(t)
         self.sim.route_file = route_file
         self.sim.current_day_time = t
         self.sim.cmd[4] = route_file
         print 'successfully travel to time: ', t
-        
+
     def get_carflow(self, t):
         if t >= 0 and t <=7:
             return self.midnight_file
-        
+
         if t > 7 and t <= 9:
             return self.rush_hour_file
-            
+
         if t > 9 and t <= 16:
             return self.normal_hour_file
-            
+
         if t > 16 and t <= 19:
             return self.rush_hour_file
-            
+
         if t > 19 and t <= 22:
             return self.normal_hour_file
-            
+
         if t >22 and t <= 24:
             return self.midnight_file
-        
+
         print 'time:', t, 'is not a supported input, put something between 0 to 24'
-        
+
 class HourlyFlowManager(SimpleFlowManager):
     def __init__(self, simulator, file_name = 'map/whole-day-flow/traffic'):
         self.sim = simulator
         self.file_name =file_name
-    
+
     def get_carflow(self,t):
         return self.file_name+'-{}.rou.xml'.format(int(t))
 
@@ -74,11 +74,11 @@ class Simulator():
             returns:
                 observation, reward, isterminal, info
     """
-    def __init__(self, visual = False, 
-                 map_file = 'map/traffic.net.xml', 
-                 route_file = 'map/traffic.rou.xml', 
-                 end_time = 3600, episode_time = 1000, 
-                 additional_file = None, 
+    def __init__(self, visual = False,
+                 map_file = 'map/traffic.net.xml',
+                 route_file = 'map/traffic.rou.xml',
+                 end_time = 3600, episode_time = 1000,
+                 additional_file = None,
                  gui_setting_file = "map/view.settings.xml",
                  penetration_rate = 1,
                  num_traffic_state = 11,
@@ -98,7 +98,7 @@ class Simulator():
         self.time = 0
         self.reset_to_same_time = False
         self.state_representation = state_representation
-        
+
         self.penetration_rate = penetration_rate
         #lane_list = ['0_e_0', '0_n_0','0_s_0','0_w_0','e_0_0','n_0_0','s_0_0','w_0_0'] # temporary, in the future, get this from the .net.xml file
         #self.lane_list = {l:Lane(l,self,penetration_rate=penetration_rate) for l in lane_list}
@@ -109,47 +109,47 @@ class Simulator():
         #for tlid in tl_list:
         #    self.tl_list[tlid] = SimpleTrafficLight(tlid, self, num_traffic_state = self.num_traffic_state)
         ###RL parameters
-       
+
         ##############
         self.episode_time = episode_time
         self.action_space = ActionSpaces(len(self.tl_list), 2) # action = 1 means move to next phase, otherwise means stay in current phase
         self.whole_day = whole_day
         self.current_day_time = 0 # this is a value from 0 to 24
-        
-        
+
+
 
         if self.visual == False:
-            self.cmd = ['sumo', 
-                  '--net-file', self.map_file, 
+            self.cmd = ['sumo',
+                  '--net-file', self.map_file,
                   '--route-files', self.route_file,
                   '--end', str(self.end_time)]
-            if not additional_file == None:      
+            if not additional_file == None:
                 self.cmd+=['--additional-files', self.additional_file]
-            
+
         else:
-            self.cmd = ['sumo-gui', 
-                  '--net-file', self.map_file, 
+            self.cmd = ['sumo-gui',
+                  '--net-file', self.map_file,
                   '--route-files', self.route_file,
                   '--end', str(self.end_time)]
-                  
+
         if whole_day:
             self.flow_manager = HourlyFlowManager(self, file_name=flow_manager_file_prefix)
             self.flow_manager.travel_to_random_time() #this will travel to a random current_day_time and modifie the carflow accordingly
-        if not additional_file == None:      
+        if not additional_file == None:
             self.cmd+=['--additional-files', self.additional_file]
         if not gui_setting_file == None:
             self.cmd+=['--gui-settings-file', self.gui_setting_file]
         self.record_file = record_file
-        
+
     def step_(self):
         #use step() for standard operation, this is only for normal traffic light
         self._simulation_step()
         for l in self.lane_list:
             self.lane_list[l].step()
-            
+
     def _init_sumo_info(self):
-        cmd = ['sumo', 
-                  '--net-file', self.map_file, 
+        cmd = ['sumo',
+                  '--net-file', self.map_file,
                   '--route-files', self.route_file,
                   '--end', str(self.end_time)]
         traci.start(cmd)
@@ -157,7 +157,7 @@ class Simulator():
         tl_list = traci.trafficlights.getIDList()
         #print 'tls:',tl_list
         self.tl_id_list = tl_list
-        
+
         for tlid in tl_list:
             self.tl_list[tlid] = SimpleTrafficLight(tlid, self, num_traffic_state = self.num_traffic_state, lane_list = list(set(traci.trafficlights.getControlledLanes(tlid))),state_representation = self.state_representation)
             #print 'controlled lane', self.tl_list[tlid].lane_list
@@ -181,7 +181,7 @@ class Simulator():
             traci.start(self.cmd)
             return
 
-    
+
     def _simulation_end(self):
         if self.visual == False:
             libsumo.close()
@@ -189,7 +189,7 @@ class Simulator():
         else:
             traci.close()
             return
-        
+
     def _simulation_step(self):
         if self.visual == False:
             libsumo.simulationStep()
@@ -209,7 +209,7 @@ class Simulator():
                 actions.append(0)
             encoded_action >>= 1
         return actions
-        
+
     def step(self, actions):
         self._simulation_step()
         for l in self.lane_list:
@@ -225,7 +225,7 @@ class Simulator():
             observation.append(tl.traffic_state)
             reward.append(self.tl_list[tlid].reward)
             i += 1
-        
+
         #print reward
         observation = np.array(observation)
         reward = np.array(reward)
@@ -233,23 +233,23 @@ class Simulator():
         #if not type( observation[0][0]) in ['int',np.float64]:
         #    print 'something wrong', observation[0][0], type(observation[0][0])
         #print reward
-        
+
         return observation, reward, self.time == self.episode_time, info
 
     def start(self):
         self._simulation_start()
         self.is_started = True
-    
+
     def stop(self):
         if self.is_started == False:
             print 'not started yet'
             return
         self._simulation_end()
         self.is_started = False
-        
+
     def reset(self):
         return self._reset()
-        
+
     def _reset(self):
         if self.is_started == True:
             self.stop()
@@ -259,18 +259,18 @@ class Simulator():
         self.time = 0
        #S if self.visual == False:
             #reload(libsumo)
-        self.start()            
+        self.start()
         #print state
         #print len(state)
-        
+
         observation = []
         reward = []
         info = (self.time, len(self.veh_list.keys()))
-        
+
         for l in self.lane_list:
             self.lane_list[l].reset()
             self.lane_list[l].update_lane_reward()
-            
+
         #print 'haha', self.tl_id_list
         for tlid in self.tl_id_list:
             tl = self.tl_list[tlid]
@@ -283,19 +283,19 @@ class Simulator():
             #i += 1
         #print 'haha', observation
         return np.array(observation)
-        
+
     def get_result(self):
         total_waiting = 0.
         equipped_waiting = 0.
         non_equipped_waiting = 0.
-        
+
         n_total = 0.
         n_equipped = 0.
         n_non_equipped = 0.
-        
+
         for vid in self.veh_list:
             v = self.veh_list[vid]
-            
+
             n_total += 1
             total_waiting += v.waiting_time
             if v.equipped:
@@ -304,21 +304,21 @@ class Simulator():
             else:
                 n_non_equipped += 1
                 non_equipped_waiting += v.waiting_time
-                
-        
+
+
         self.average_waiting_time = total_waiting/n_total if n_total>0 else 0
         self.equipped_average_waiting_time = equipped_waiting/n_equipped if n_equipped>0 else 0
         self.nonequipped_average_waiting_time = non_equipped_waiting/n_non_equipped if n_non_equipped>0 else 0
         #print n_equipped, equipped_waiting
-        return self.average_waiting_time,self.equipped_average_waiting_time, self.nonequipped_average_waiting_time   
+        return self.average_waiting_time,self.equipped_average_waiting_time, self.nonequipped_average_waiting_time
     def print_status(self):
         #print self.veh_list
         tl = self.tl_list[self.tl_id_list[0]]
         print 'current time:', self.time, ' total cars:', len(self.veh_list.keys()), 'traffic status', tl.traffic_state, 'reward:', tl.reward
-                                                             
 
-        
-        
+
+
+
     def record_result(self):
         f = open(self.record_file, 'a')
         f.write('{}\t{}\t{}\n'.format(*(self.get_result())))
@@ -339,7 +339,7 @@ class Lane():
         self.detected_car_number = 0
         self.lane_reward = 0
         self.penetration_rate = penetration_rate
-        
+
     def update_lane_reward(self):
         self.lane_reward = 0
         for vid in self.vehicle_list:
@@ -349,13 +349,13 @@ class Lane():
     def _get_vehicles(self):
         if self.simulator.visual == False:
             return list(libsumo.lane_getLastStepVehicleIDs(self.id))
-        
+
         else:
             return traci.lane.getLastStepVehicleIDs(self.id)
-        
+
     def step(self):
         vidlist = self._get_vehicles()
-        
+
         self.vehicle_list = vidlist
         self.car_number = len(vidlist)
         self.detected_car_number = 0
@@ -367,14 +367,14 @@ class Lane():
             self.simulator.veh_list[vid].lane = self
             self.simulator.veh_list[vid].step()
         self.update_lane_reward()
-        
+
     def reset(self):
         self.vehicle_list = []
         self.car_number = 0
         self.detected_car_number = 0
         self.lane_reward = 0
-            
-            
+
+
 class Vehicle():
     max_speed = 13.9
 
@@ -385,16 +385,16 @@ class Vehicle():
         self.latest_time = simulator.time
         self.waiting_time = 0
         self.equipped = equipped
-    
+
     def _update_speed(self):
         if self.simulator.visual == False:
             self.speed = libsumo.vehicle_getSpeed(self.id)
             #print 'vehicle_getSpeed:', type(self.speed), self.speed
-            return 
+            return
         else:
             self.speed = traci.vehicle.getSpeed(self.id)
             return
-        
+
     def _update_lane_position(self):
         if self.simulator.visual == False:
             self.lane_position = self.lane.length - libsumo.vehicle_getLanePosition(self.id)
@@ -403,13 +403,13 @@ class Vehicle():
         else:
             self.lane_position = self.lane.length - traci.vehicle.getLanePosition(self.id)
             return
-        
+
     def _update_appearance(self):
         if self.simulator.visual:
             if self.equipped:
                 #traci.vehicle.setColor(self.id,(255,0,0,0))
                 return
-    
+
     def step(self):
         self._update_appearance()
         self._update_speed()
@@ -433,15 +433,29 @@ class TrafficLight():
         else:
             traci.trafficlights.setRedYellowGreenState(self.id,self.signal_groups[phase])
             return
-        
+
     def step(self):
         print 'specify this method in subclass before use'
         pass
 
+class TrafficLightLuxembourg(SimpleTrafficLight):
+    def __init__(self, tlid, simulator ,
+        max_phase_time= 40.,
+        min_phase_time = 5,
+        yellow_time = 3,
+        num_traffic_state = 11,
+        lane_list = [],
+        state_representation = '',
+        signal_groups = [rrrGGGGgrrrGGGGg, rrryyyygrrryyyyg, rrrrrrrGrrrrrrrG, rrrrrrryrrrrrrry, GGgGrrrrGGgGrrrr, yygyrrrryygyrrrr, rrGrrrrrrrGrrrrr, rryrrrrrrryrrrrr]):
+        SimpleTrafficLight.__init__(self,tlid, simulator, max_phase_time= max_phase_time, min_phase_time = min_phase_time,
+            yellow_time = yellow_time, num_traffic_state = num_traffic_state, lane_list = lane_list, state_representation = state_representation)
+        self.signal_groups = signal_groups
+
+
 
 class SimpleTrafficLight(TrafficLight):
     def __init__(self, tlid, simulator, max_phase_time= 40., min_phase_time = 5, yellow_time = 3, num_traffic_state = 11, lane_list = [], state_representation = ''):
-        
+
         TrafficLight.__init__(self, tlid, simulator)
         self.signal_groups = ['rrrrGGGGrrrrGGGG','rrrryyyyrrrryyyy','GGGGrrrrGGGGrrrr','yyyyrrrryyyyrrrr']
         self.current_phase = 0  # phase can be 0, 1, 2, 3
@@ -466,7 +480,7 @@ class SimpleTrafficLight(TrafficLight):
         #    self.traffic_state = np.zeros((self.lanes, self.lane_length))
 
         self.reward = None
-    
+
     def updateRLParameters(self):
         if self.state_representation == 'original':
             self.updateRLParameters_original()
@@ -477,7 +491,7 @@ class SimpleTrafficLight(TrafficLight):
         lane_list = self.lane_list  # temporary, in the future, get this from the .net.xml file
         sim = self.simulator
         self.reward = 0
-        
+
         car_normalizing_number = 20. #1. # TODO generalize by length / car length
 
         # Traffic State 1
@@ -506,12 +520,12 @@ class SimpleTrafficLight(TrafficLight):
             self.traffic_state[6]*=-1
             self.traffic_state[7]*=-1
             self.traffic_state[8]*=-1
-        
+
         self.traffic_state[9] = 1 if self.current_phase in [1,3] else -1
-    
+
         if self.simulator.whole_day:
             self.traffic_state[10] = self.simulator.current_day_time/float(24)
-        
+
 
         # Traffic State 2 I will update this part in another inherited class, I don't want to put this in the same class since it becomes messy
         #if self.MAP_SPEED:
@@ -527,7 +541,7 @@ class SimpleTrafficLight(TrafficLight):
         lane_list = self.lane_list  # temporary, in the future, get this from the .net.xml file
         sim = self.simulator
         self.reward = 0
-        
+
         car_normalizing_number = 20. #1. # TODO generalize by length / car length
 
         # Traffic State 1
@@ -547,13 +561,13 @@ class SimpleTrafficLight(TrafficLight):
         self.traffic_state[8] = self.current_phase_time/float(self.max_time)
 
         self.traffic_state[9] = self.current_phase
-    
+
         if self.simulator.whole_day:
             self.traffic_state[10] = self.simulator.current_day_time/float(24)
     def step(self, action):
         self.current_phase_time += 1
         # make sure this phrase remain to keep track on current phase time
-        
+
          # rGrG or GrGr
         if self.check_allow_change_phase():
             if action == 1 or self.current_phase_time > self.max_time:
@@ -561,7 +575,7 @@ class SimpleTrafficLight(TrafficLight):
                 self.move_to_next_phase()
                 #elif self.correct_action(action):
             #    self.move_to_next_phase()
-        elif self.current_phase in [1,3]: 
+        elif self.current_phase in [1,3]:
             # yellow phase, action doesn't affect
             if self.current_phase_time > self.yellow_time:
                 self.move_to_next_phase()
@@ -574,7 +588,7 @@ class SimpleTrafficLight(TrafficLight):
     #def correct_action(self, action):
     #    return action == (self.current_phase + 1) % len(self.actions)
     def check_allow_change_phase(self):
-        if self.current_phase in [0, 2]: 
+        if self.current_phase in [0, 2]:
             if self.current_phase_time>self.min_phase_time:
                 #print self.current_phase_time, self.min_phase_time
                 return True
@@ -594,15 +608,15 @@ class ActionSpaces:
     def sample(self):
         return np.random.randint(self.n, size=self.num_TL)
 
-  
+
 if __name__ == '__main__':
     num_episode = 100
     episode_time = 3000
-    
+
     sim = Simulator(episode_time = episode_time,
                     visual=False,
                     penetration_rate = 0.5,
-                    map_file = 'map/1-intersection/traffic.net.xml', 
+                    map_file = 'map/1-intersection/traffic.net.xml',
                  route_file = 'map/1-intersection/traffic.rou.xml')
     #sim = Simulator(visual = True, episode_time=episode_time)
     # use this commend if you don't have pysumo installed
