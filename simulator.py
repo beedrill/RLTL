@@ -9,6 +9,11 @@ from time import time
 import numpy as np
 import random
 
+def remove_duplicates(seq):
+    seen = set()
+    seen_add = seen.add
+    return [x for x in seq if not (x in seen or seen_add(x))]
+
 class SimpleFlowManager():
     def __init__(self, simulator,
                  rush_hour_file = 'map/traffic-dense.rou.xml',
@@ -85,7 +90,8 @@ class Simulator():
                  record_file = "record.txt",
                  whole_day = False,
                  state_representation = 'sign',
-                 flow_manager_file_prefix = 'map/whole-day-flow/traffic'):
+                 flow_manager_file_prefix = 'map/whole-day-flow/traffic',
+                 traffic_light_module = SimpleTrafficLight):
         self.visual = visual
         self.map_file = map_file
         self.end_time = end_time
@@ -159,7 +165,7 @@ class Simulator():
         self.tl_id_list = tl_list
 
         for tlid in tl_list:
-            self.tl_list[tlid] = SimpleTrafficLight(tlid, self, num_traffic_state = self.num_traffic_state, lane_list = list(set(traci.trafficlights.getControlledLanes(tlid))),state_representation = self.state_representation)
+            self.tl_list[tlid] = traffic_light_module(tlid, self, num_traffic_state = self.num_traffic_state, lane_list = remove_duplicates(traci.trafficlights.getControlledLanes(tlid)),state_representation = self.state_representation)
             #print 'controlled lane', self.tl_list[tlid].lane_list
         lane_list = traci.lane.getIDList()
         self.lane_list = {}
