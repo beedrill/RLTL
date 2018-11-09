@@ -66,6 +66,267 @@ class HourlyFlowManager(SimpleFlowManager):
     def get_carflow(self,t):
         return self.file_name+'-{}.rou.xml'.format(int(t))
 
+
+class Vehicle():
+    max_speed = 13.9
+
+    def __init__(self, vid, simulator, equipped = True,):
+        self.id = vid
+        self.simulator = simulator
+        self.depart_time = simulator.time
+        self.latest_time = simulator.time
+        self.waiting_time = 0
+        self.equipped = equipped
+
+    def _update_speed(self):
+        if self.simulator.visual == False:
+            self.speed = libsumo.vehicle_getSpeed(self.id)
+            #print 'vehicle_getSpeed:', type(self.speed), self.speed
+            return
+        else:
+            self.speed = traci.vehicle.getSpeed(self.id)
+            return
+
+    def _update_lane_position(self):
+        if self.simulator.visual == False:
+            self.lane_position = self.lane.length - libsumo.vehicle_getLanePosition(self.id)
+            #print 'vehicle_getLanePosition:', type(self.lane_position), self.lane_position
+            return
+        else:
+            self.lane_position = self.lane.length - traci.vehicle.getLanePosition(self.id)
+            return
+
+    def _update_appearance(self):
+        if self.simulator.visual:
+            if self.equipped:
+                #traci.vehicle.setColor(self.id,(255,0,0,0))
+                return
+
+    def step(self):
+        self._update_appearance()
+        self._update_speed()
+        self._update_lane_position()
+        self.latest_time = self.simulator.time
+        if self.speed < 1:
+            self.waiting_time += 1
+
+
+class TrafficLight():
+
+    def __init__(self, tlid, simulator):
+        self.id = tlid
+        self.simulator = simulator
+
+    def _set_phase(self, phase):
+        self.current_phase = phase
+        if self.simulator.visual == False:
+            libsumo.trafficlight_setRedYellowGreenState(self.id, self.signal_groups[phase])
+            return
+        else:
+            traci.trafficlights.setRedYellowGreenState(self.id,self.signal_groups[phase])
+            return
+
+    def step(self):
+        print 'specify this method in subclass before use'
+        pass
+
+
+
+class SimpleTrafficLight(TrafficLight):
+    def __init__(self, tlid, simulator, max_phase_time= 40., min_phase_time = 5, yellow_time = 3, num_traffic_state = 11, lane_list = [], state_representation = ''):
+
+        TrafficLight.__init__(self, tlid, simulator)
+        self.signal_groups = ['rrrrGGGGrrrrGGGG','rrrryyyyrrrryyyy','GGGGrrrrGGGGrrrr','yyyyrrrryyyyrrrr']
+        self.current_phase = 0  # phase can be 0, 1, 2, 3
+        self.current_phase_time = 0
+        self.max_time = max_phase_time
+        self.min_phase_time = min_phase_time
+        self.yellow_time = yellow_time
+
+        # Traffic State 1
+        # (car num, .. , dist to TL, .., current phase time)
+        self.num_traffic_state = num_traffic_state
+        self.traffic_state = [None for i in range(0, self.num_traffic_state)]
+        self.lane_list = lane_list
+        self.state_representation = state_representation
+        # Traffic State 2
+        # Lanes with car speed in its position
+        #self.MAP_SPEED = False
+        #self.lane_length = 252
+        #self.lanes = 4
+        #self.car_length = 4
+        #if self.MAP_SPEED:
+        #    self.traffic_state = np.zeros((self.lanes, self.lane_length))
+
+        self.reward = None
+
+    def updateRLParameters(self):
+        if self.state_representation == 'original':
+            self.updateRLParameters_original()
+            return
+        elif self.state_representation == 'sign':
+            self.updateRLParameters_sign()
+        else:
+            print 'no such state representation supported'
+            return
+
+    def updateRLParameters_sign(self):
+        lane_list = self.lane_list  # temporary, in the future, get this from the .net.xml file
+        sim = self.simulator
+        self.reward = 0
+
+        car_normalizing_number = 20. #1. # TODO generalize by length / car length
+
+        # Traffic State 1
+        for i in range(0, 4):
+            self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number/car_normalizing_number
+            temp = sim.lane_list[lane_list[i]].length
+            for vid in sim.lane_list[lane_list[i]].vehicle_list:
+                v = sim.veh_list[vid]
+                if v.equipped == False:
+                    continue
+                if v.lane_position < temp and v.equipped:
+                    temp = sim.veh_list[vid].lane_position
+            #self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
+            self.traffic_state[i+4] = 1 - temp / 125. # TODO generalize
+            #self.traffic_state[i+4] = temp
+            self.reward += sim.lane_list[lane_list[i]].lane_reward
+        self.traffic_state[8] = self.current_phase_time/float(self.max_time)
+        if self.current_phase in [0,1]:
+            self.traffic_state[0]*=-1
+            self.traffic_state[1]*=-1
+            self.traffic_state[4]*=-1
+            self.traffic_state[5]*=-1
+        else:
+            self.traffic_state[2]*=-1
+            self.traffic_state[3]*=-1
+            self.traffic_state[6]*=-1
+            self.traffic_state[7]*=-1
+            self.traffic_state[8]*=-1
+
+        self.traffic_state[9] = 1 if self.current_phase in [1,3] else -1
+
+        if self.simulator.whole_day:
+            self.traffic_state[10] = self.simulator.current_day_time/float(24)
+
+
+        # Traffic State 2 I will update this part in another inherited class, I don't want to put this in the same class since it becomes messy
+        #if self.MAP_SPEED:
+        #    self.traffic_state = np.zeros((self.lanes, self.lane_length))
+        #    for i in range(self.lanes):
+        #        for vid in sim.lane_list[lane_list[i]].vehicle_list:
+        #            v = sim.veh_list[vid]
+        #            if v.lane_position < self.lane_length and v.equipped:
+        #                self.traffic_state[i, v.lane_position] = v.speed / Vehicle.max_speed
+        #        self.reward += sim.lane_list[lane_list[i]].lane_reward
+
+    def updateRLParameters_original(self):
+        lane_list = self.lane_list  # temporary, in the future, get this from the .net.xml file
+        sim = self.simulator
+        self.reward = 0
+
+        car_normalizing_number = 20. #1. # TODO generalize by length / car length
+
+        # Traffic State 1
+        for i in range(0, 4):
+            self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number/car_normalizing_number
+            temp = sim.lane_list[lane_list[i]].length
+            for vid in sim.lane_list[lane_list[i]].vehicle_list:
+                v = sim.veh_list[vid]
+                if v.equipped == False:
+                    continue
+                if v.lane_position < temp and v.equipped:
+                    temp = sim.veh_list[vid].lane_position
+            #self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
+            self.traffic_state[i+4] = 1 - temp / 125. # TODO generalize
+            #self.traffic_state[i+4] = temp
+            self.reward += sim.lane_list[lane_list[i]].lane_reward
+        self.traffic_state[8] = self.current_phase_time/float(self.max_time)
+
+        self.traffic_state[9] = self.current_phase
+
+        if self.simulator.whole_day:
+            self.traffic_state[10] = self.simulator.current_day_time/float(24)
+    def step(self, action):
+        self.current_phase_time += 1
+        # make sure this phrase remain to keep track on current phase time
+
+         # rGrG or GrGr
+        if self.check_allow_change_phase():
+            if action == 1 or self.current_phase_time > self.max_time:
+           #if action == 1:
+                self.move_to_next_phase()
+                #elif self.correct_action(action):
+            #    self.move_to_next_phase()
+        elif self.current_phase in [1,3]:
+            # yellow phase, action doesn't affect
+            if self.current_phase_time > self.yellow_time:
+                self.move_to_next_phase()
+            # if no appropriate action is given, phase doesn't change
+            # if self.current_phase_time > self.yellow_time and self.correct_action(action):
+            #     self.move_to_next_phase()
+        self.updateRLParameters()
+        # make sure this method is called last to avoid error
+
+    #def correct_action(self, action):
+    #    return action == (self.current_phase + 1) % len(self.actions)
+    def check_allow_change_phase(self):
+        if self.current_phase in [0, 2]:
+            if self.current_phase_time>self.min_phase_time:
+                #print self.current_phase_time, self.min_phase_time
+                return True
+        return False
+
+    def move_to_next_phase(self):
+        self.current_phase = (self.current_phase + 1) % len(self.signal_groups)
+        self._set_phase(self.current_phase)
+        self.current_phase_time = 0
+
+class TrafficLightLuxembourg(SimpleTrafficLight):
+    def __init__(self, tlid, simulator ,
+        max_phase_time= 40.,
+        min_phase_time = 5,
+        yellow_time = 3,
+        num_traffic_state = 11,
+        lane_list = [],
+        state_representation = '',
+        signal_groups = ['rrrGGGGgrrrGGGGg', 'rrryyyygrrryyyyg', 'rrrrrrrGrrrrrrrG', 'rrrrrrryrrrrrrry', 'GGgGrrrrGGgGrrrr', 'yygyrrrryygyrrrr', 'rrGrrrrrrrGrrrrr', 'rryrrrrrrryrrrrr']):
+        SimpleTrafficLight.__init__(self,tlid, simulator, max_phase_time= max_phase_time, min_phase_time = min_phase_time,
+            yellow_time = yellow_time, num_traffic_state = num_traffic_state, lane_list = lane_list, state_representation = state_representation)
+        self.signal_groups = signal_groups
+
+    def updateRLParameters_original(self):
+        lane_list = self.lane_list  # temporary, in the future, get this from the .net.xml file
+        sim = self.simulator
+        self.reward = 0
+
+        car_normalizing_number = 20. #1. # TODO generalize by length / car length
+        n_lane = len(lane_list)
+
+        # Traffic State 1
+        for i in range(0, n_lane):
+            self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number/car_normalizing_number
+            #temp = sim.lane_list[lane_list[i]].length
+            temp = 125.
+            for vid in sim.lane_list[lane_list[i]].vehicle_list:
+                v = sim.veh_list[vid]
+                if v.equipped == False:
+                    continue
+                if v.lane_position < temp and v.equipped:
+                    temp = sim.veh_list[vid].lane_position
+            #self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
+            self.traffic_state[i+n_lane] = 1 - temp / 125. # TODO generalize
+            #self.traffic_state[i+4] = temp
+            self.reward += sim.lane_list[lane_list[i]].lane_reward
+        self.traffic_state[2*n_lane] = self.current_phase_time/float(self.max_time)
+
+        self.traffic_state[2*n_lane+1] = self.current_phase
+
+        if self.simulator.whole_day:
+            self.traffic_state[2*n_lane+2] = self.simulator.current_day_time/float(24)
+
+
+
 class Simulator():
     """
     mimic openAI gym environment
@@ -104,6 +365,7 @@ class Simulator():
         self.time = 0
         self.reset_to_same_time = False
         self.state_representation = state_representation
+        self.traffic_light_module = traffic_light_module
 
         self.penetration_rate = penetration_rate
         #lane_list = ['0_e_0', '0_n_0','0_s_0','0_w_0','e_0_0','n_0_0','s_0_0','w_0_0'] # temporary, in the future, get this from the .net.xml file
@@ -121,6 +383,7 @@ class Simulator():
         self.action_space = ActionSpaces(len(self.tl_list), 2) # action = 1 means move to next phase, otherwise means stay in current phase
         self.whole_day = whole_day
         self.current_day_time = 0 # this is a value from 0 to 24
+
 
 
 
@@ -165,7 +428,7 @@ class Simulator():
         self.tl_id_list = tl_list
 
         for tlid in tl_list:
-            self.tl_list[tlid] = traffic_light_module(tlid, self, num_traffic_state = self.num_traffic_state, lane_list = remove_duplicates(traci.trafficlights.getControlledLanes(tlid)),state_representation = self.state_representation)
+            self.tl_list[tlid] = self.traffic_light_module(tlid, self, num_traffic_state = self.num_traffic_state, lane_list = remove_duplicates(traci.trafficlights.getControlledLanes(tlid)),state_representation = self.state_representation)
             #print 'controlled lane', self.tl_list[tlid].lane_list
         lane_list = traci.lane.getIDList()
         self.lane_list = {}
@@ -368,10 +631,12 @@ class Lane():
         for vid in vidlist:
             if not vid in self.simulator.veh_list.keys():
                 self.simulator.veh_list[vid]= Vehicle(vid,self.simulator, equipped = random.random()<self.penetration_rate)
-            if self.simulator.veh_list[vid].equipped == True:
-                self.detected_car_number += 1
             self.simulator.veh_list[vid].lane = self
             self.simulator.veh_list[vid].step()
+            if self.simulator.veh_list[vid].equipped == True and self.simulator.veh_list[vid].lane_position< 125.:
+                self.detected_car_number += 1
+
+
         self.update_lane_reward()
 
     def reset(self):
@@ -379,231 +644,6 @@ class Lane():
         self.car_number = 0
         self.detected_car_number = 0
         self.lane_reward = 0
-
-
-class Vehicle():
-    max_speed = 13.9
-
-    def __init__(self, vid, simulator, equipped = True,):
-        self.id = vid
-        self.simulator = simulator
-        self.depart_time = simulator.time
-        self.latest_time = simulator.time
-        self.waiting_time = 0
-        self.equipped = equipped
-
-    def _update_speed(self):
-        if self.simulator.visual == False:
-            self.speed = libsumo.vehicle_getSpeed(self.id)
-            #print 'vehicle_getSpeed:', type(self.speed), self.speed
-            return
-        else:
-            self.speed = traci.vehicle.getSpeed(self.id)
-            return
-
-    def _update_lane_position(self):
-        if self.simulator.visual == False:
-            self.lane_position = self.lane.length - libsumo.vehicle_getLanePosition(self.id)
-            #print 'vehicle_getLanePosition:', type(self.lane_position), self.lane_position
-            return
-        else:
-            self.lane_position = self.lane.length - traci.vehicle.getLanePosition(self.id)
-            return
-
-    def _update_appearance(self):
-        if self.simulator.visual:
-            if self.equipped:
-                #traci.vehicle.setColor(self.id,(255,0,0,0))
-                return
-
-    def step(self):
-        self._update_appearance()
-        self._update_speed()
-        self._update_lane_position()
-        self.latest_time = self.simulator.time
-        if self.speed < 1:
-            self.waiting_time += 1
-
-
-class TrafficLight():
-
-    def __init__(self, tlid, simulator):
-        self.id = tlid
-        self.simulator = simulator
-
-    def _set_phase(self, phase):
-        self.current_phase = phase
-        if self.simulator.visual == False:
-            libsumo.trafficlight_setRedYellowGreenState(self.id, self.signal_groups[phase])
-            return
-        else:
-            traci.trafficlights.setRedYellowGreenState(self.id,self.signal_groups[phase])
-            return
-
-    def step(self):
-        print 'specify this method in subclass before use'
-        pass
-
-class TrafficLightLuxembourg(SimpleTrafficLight):
-    def __init__(self, tlid, simulator ,
-        max_phase_time= 40.,
-        min_phase_time = 5,
-        yellow_time = 3,
-        num_traffic_state = 11,
-        lane_list = [],
-        state_representation = '',
-        signal_groups = [rrrGGGGgrrrGGGGg, rrryyyygrrryyyyg, rrrrrrrGrrrrrrrG, rrrrrrryrrrrrrry, GGgGrrrrGGgGrrrr, yygyrrrryygyrrrr, rrGrrrrrrrGrrrrr, rryrrrrrrryrrrrr]):
-        SimpleTrafficLight.__init__(self,tlid, simulator, max_phase_time= max_phase_time, min_phase_time = min_phase_time,
-            yellow_time = yellow_time, num_traffic_state = num_traffic_state, lane_list = lane_list, state_representation = state_representation)
-        self.signal_groups = signal_groups
-
-
-
-class SimpleTrafficLight(TrafficLight):
-    def __init__(self, tlid, simulator, max_phase_time= 40., min_phase_time = 5, yellow_time = 3, num_traffic_state = 11, lane_list = [], state_representation = ''):
-
-        TrafficLight.__init__(self, tlid, simulator)
-        self.signal_groups = ['rrrrGGGGrrrrGGGG','rrrryyyyrrrryyyy','GGGGrrrrGGGGrrrr','yyyyrrrryyyyrrrr']
-        self.current_phase = 0  # phase can be 0, 1, 2, 3
-        self.current_phase_time = 0
-        self.max_time = max_phase_time
-        self.min_phase_time = min_phase_time
-        self.yellow_time = yellow_time
-
-        # Traffic State 1
-        # (car num, .. , dist to TL, .., current phase time)
-        self.num_traffic_state = num_traffic_state
-        self.traffic_state = [None for i in range(0, self.num_traffic_state)]
-        self.lane_list = lane_list
-        self.state_representation = state_representation
-        # Traffic State 2
-        # Lanes with car speed in its position
-        #self.MAP_SPEED = False
-        #self.lane_length = 252
-        #self.lanes = 4
-        #self.car_length = 4
-        #if self.MAP_SPEED:
-        #    self.traffic_state = np.zeros((self.lanes, self.lane_length))
-
-        self.reward = None
-
-    def updateRLParameters(self):
-        if self.state_representation == 'original':
-            self.updateRLParameters_original()
-            return
-        elif not self.state_representation == 'sign':
-            print 'no such state representation supported'
-            return
-        lane_list = self.lane_list  # temporary, in the future, get this from the .net.xml file
-        sim = self.simulator
-        self.reward = 0
-
-        car_normalizing_number = 20. #1. # TODO generalize by length / car length
-
-        # Traffic State 1
-        for i in range(0, 4):
-            self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number/car_normalizing_number
-            temp = sim.lane_list[lane_list[i]].length
-            for vid in sim.lane_list[lane_list[i]].vehicle_list:
-                v = sim.veh_list[vid]
-                if v.equipped == False:
-                    continue
-                if v.lane_position < temp and v.equipped:
-                    temp = sim.veh_list[vid].lane_position
-            #self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
-            self.traffic_state[i+4] = 1 - temp / 125. # TODO generalize
-            #self.traffic_state[i+4] = temp
-            self.reward += sim.lane_list[lane_list[i]].lane_reward
-        self.traffic_state[8] = self.current_phase_time/float(self.max_time)
-        if self.current_phase in [0,1]:
-            self.traffic_state[0]*=-1
-            self.traffic_state[1]*=-1
-            self.traffic_state[4]*=-1
-            self.traffic_state[5]*=-1
-        else:
-            self.traffic_state[2]*=-1
-            self.traffic_state[3]*=-1
-            self.traffic_state[6]*=-1
-            self.traffic_state[7]*=-1
-            self.traffic_state[8]*=-1
-
-        self.traffic_state[9] = 1 if self.current_phase in [1,3] else -1
-
-        if self.simulator.whole_day:
-            self.traffic_state[10] = self.simulator.current_day_time/float(24)
-
-
-        # Traffic State 2 I will update this part in another inherited class, I don't want to put this in the same class since it becomes messy
-        #if self.MAP_SPEED:
-        #    self.traffic_state = np.zeros((self.lanes, self.lane_length))
-        #    for i in range(self.lanes):
-        #        for vid in sim.lane_list[lane_list[i]].vehicle_list:
-        #            v = sim.veh_list[vid]
-        #            if v.lane_position < self.lane_length and v.equipped:
-        #                self.traffic_state[i, v.lane_position] = v.speed / Vehicle.max_speed
-        #        self.reward += sim.lane_list[lane_list[i]].lane_reward
-
-    def updateRLParameters_original(self):
-        lane_list = self.lane_list  # temporary, in the future, get this from the .net.xml file
-        sim = self.simulator
-        self.reward = 0
-
-        car_normalizing_number = 20. #1. # TODO generalize by length / car length
-
-        # Traffic State 1
-        for i in range(0, 4):
-            self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number/car_normalizing_number
-            temp = sim.lane_list[lane_list[i]].length
-            for vid in sim.lane_list[lane_list[i]].vehicle_list:
-                v = sim.veh_list[vid]
-                if v.equipped == False:
-                    continue
-                if v.lane_position < temp and v.equipped:
-                    temp = sim.veh_list[vid].lane_position
-            #self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
-            self.traffic_state[i+4] = 1 - temp / 125. # TODO generalize
-            #self.traffic_state[i+4] = temp
-            self.reward += sim.lane_list[lane_list[i]].lane_reward
-        self.traffic_state[8] = self.current_phase_time/float(self.max_time)
-
-        self.traffic_state[9] = self.current_phase
-
-        if self.simulator.whole_day:
-            self.traffic_state[10] = self.simulator.current_day_time/float(24)
-    def step(self, action):
-        self.current_phase_time += 1
-        # make sure this phrase remain to keep track on current phase time
-
-         # rGrG or GrGr
-        if self.check_allow_change_phase():
-            if action == 1 or self.current_phase_time > self.max_time:
-           #if action == 1:
-                self.move_to_next_phase()
-                #elif self.correct_action(action):
-            #    self.move_to_next_phase()
-        elif self.current_phase in [1,3]:
-            # yellow phase, action doesn't affect
-            if self.current_phase_time > self.yellow_time:
-                self.move_to_next_phase()
-            # if no appropriate action is given, phase doesn't change
-            # if self.current_phase_time > self.yellow_time and self.correct_action(action):
-            #     self.move_to_next_phase()
-        self.updateRLParameters()
-        # make sure this method is called last to avoid error
-
-    #def correct_action(self, action):
-    #    return action == (self.current_phase + 1) % len(self.actions)
-    def check_allow_change_phase(self):
-        if self.current_phase in [0, 2]:
-            if self.current_phase_time>self.min_phase_time:
-                #print self.current_phase_time, self.min_phase_time
-                return True
-        return False
-
-    def move_to_next_phase(self):
-        self.current_phase = (self.current_phase + 1) % len(self.signal_groups)
-        self._set_phase(self.current_phase)
-        self.current_phase_time = 0
 
 
 class ActionSpaces:
@@ -616,28 +656,34 @@ class ActionSpaces:
 
 
 if __name__ == '__main__':
+
     num_episode = 100
     episode_time = 3000
 
     sim = Simulator(episode_time = episode_time,
                     visual=False,
                     penetration_rate = 0.5,
-                    map_file = 'map/1-intersection/traffic.net.xml',
-                 route_file = 'map/1-intersection/traffic.rou.xml')
+                    map_file = 'map/whole-day-training-flow-LuST-12408/traffic.net.xml',
+                    route_file = 'map/whole-day-training-flow-LuST-12408/traffic.rou.xml',
+                    whole_day = True,
+                    num_traffic_state = 27,
+                    state_representation = 'original',
+                    flow_manager_file_prefix = 'map/whole-day-training-flow-LuST-12408/traffic',
+                    traffic_light_module = TrafficLightLuxembourg)
     #sim = Simulator(visual = True, episode_time=episode_time)
-    # use this commend if you don't have pysumo installed
+    # # use this commend if you don't have pysumo installed
     sim.start()
     for _ in range(num_episode):
-        for i in range(episode_time):
-        #while True:
-            action = sim.action_space.sample()
-            next_state, reward, terminal, info = sim.step(action)
-            #print reward
-            sim.print_status()
-            #if terminal:
-        state = sim.reset()
-            #    print state
-            #    array = np.array(state, np.float32)
-                #sim.print_status()
-            #    break
+         for i in range(episode_time):
+         #while True:
+             action = sim.action_space.sample()
+             next_state, reward, terminal, info = sim.step(action)
+    #         #print reward
+             sim.print_status()
+    #         #if terminal:
+         state = sim.reset()
+    #         #    print state
+    #         #    array = np.array(state, np.float32)
+    #             #sim.print_status()
+    #         #    break
     sim.stop()
