@@ -1,13 +1,21 @@
 try:
     import libsumo
 except ImportError:
-    print 'libsumo not installed properly, please use traci only'
+    print('libsumo not installed properly, please use traci only')
 # comment this line if you dont have pysumo and set visual = True, it should still run traci
+import os, sys
+if 'SUMO_HOME' in os.environ:
+    tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
+    sys.path.append(tools)
+else:
+    print('warning: no SUMO_HOME declared')
 
 import traci
 from time import time
 import numpy as np
 import random
+
+TRUNCATE_DISTANCE = 125.
 
 def remove_duplicates(seq):
     seen = set()
@@ -35,7 +43,7 @@ class SimpleFlowManager():
         self.sim.route_file = route_file
         self.sim.current_day_time = t
         self.sim.cmd[4] = route_file
-        print 'successfully travel to time: ', t
+        print('successfully travel to time: ', t)
 
     def get_carflow(self, t):
         if t >= 0 and t <=7:
@@ -56,7 +64,7 @@ class SimpleFlowManager():
         if t >22 and t <= 24:
             return self.midnight_file
 
-        print 'time:', t, 'is not a supported input, put something between 0 to 24'
+        print('time:', t, 'is not a supported input, put something between 0 to 24')
 
 class HourlyFlowManager(SimpleFlowManager):
     def __init__(self, simulator, file_name = 'map/whole-day-flow/traffic'):
@@ -127,7 +135,7 @@ class TrafficLight():
             return
 
     def step(self):
-        print 'specify this method in subclass before use'
+        print('specify this method in subclass before use')
         pass
 
 
@@ -170,7 +178,7 @@ class SimpleTrafficLight(TrafficLight):
         elif self.state_representation == 'sign':
             self.updateRLParameters_sign()
         else:
-            print 'no such state representation supported'
+            print('no such state representation supported')
             return
 
     def updateRLParameters_sign(self):
@@ -191,7 +199,7 @@ class SimpleTrafficLight(TrafficLight):
                 if v.lane_position < temp and v.equipped:
                     temp = sim.veh_list[vid].lane_position
             #self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
-            self.traffic_state[i+4] = 1 - temp / 125. # TODO generalize
+            self.traffic_state[i+4] = 1 - temp / TRUNCATE_DISTANCE # TODO generalize
             #self.traffic_state[i+4] = temp
             self.reward += sim.lane_list[lane_list[i]].lane_reward
         self.traffic_state[8] = self.current_phase_time/float(self.max_time)
@@ -241,7 +249,7 @@ class SimpleTrafficLight(TrafficLight):
                 if v.lane_position < temp and v.equipped:
                     temp = sim.veh_list[vid].lane_position
             #self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
-            self.traffic_state[i+4] = 1 - temp / 125. # TODO generalize
+            self.traffic_state[i+4] = 1 - temp / TRUNCATE_DISTANCE # TODO generalize
             #self.traffic_state[i+4] = temp
             self.reward += sim.lane_list[lane_list[i]].lane_reward
         self.traffic_state[8] = self.current_phase_time/float(self.max_time)
@@ -318,7 +326,7 @@ class TrafficLightLuxembourg(SimpleTrafficLight):
         for i in range(0, n_lane):
             self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number/car_normalizing_number
             #temp = sim.lane_list[lane_list[i]].length
-            temp = 125.
+            temp = TRUNCATE_DISTANCE
             for vid in sim.lane_list[lane_list[i]].vehicle_list:
                 v = sim.veh_list[vid]
                 if v.equipped == False:
@@ -326,9 +334,10 @@ class TrafficLightLuxembourg(SimpleTrafficLight):
                 if v.lane_position < temp and v.equipped:
                     temp = sim.veh_list[vid].lane_position
             #self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
-            self.traffic_state[i+n_lane] = 1 - temp / 125. # TODO generalize
+            self.traffic_state[i+n_lane] = 1 - temp / TRUNCATE_DISTANCE # TODO generalize
             #self.traffic_state[i+4] = temp
             self.reward += sim.lane_list[lane_list[i]].lane_reward
+
         self.traffic_state[2*n_lane] = self.current_phase_time/float(self.max_time)
 
         self.traffic_state[2*n_lane+1] = self.current_phase
@@ -522,7 +531,7 @@ class Simulator():
 
     def stop(self):
         if self.is_started == False:
-            print 'not started yet'
+            print('not started yet')
             return
         self._simulation_end()
         self.is_started = False
@@ -594,7 +603,7 @@ class Simulator():
     def print_status(self):
         #print self.veh_list
         tl = self.tl_list[self.tl_id_list[0]]
-        print 'current time:', self.time, ' total cars:', len(self.veh_list.keys()), 'traffic status', tl.traffic_state, 'reward:', tl.reward
+        print('current time:', self.time, ' total cars:', len(self.veh_list.keys()), 'traffic status', tl.traffic_state, 'reward:', tl.reward)
 
 
 
@@ -623,9 +632,10 @@ class Lane():
     def update_lane_reward(self):
         self.lane_reward = 0
         for vid in self.vehicle_list:
-            self.lane_reward+=(Vehicle.max_speed - self.simulator.veh_list[vid].speed)/Vehicle.max_speed
+            if self.simulator.veh_list[vid].lane_position< TRUNCATE_DISTANCE:
+                self.lane_reward+=(Vehicle.max_speed - self.simulator.veh_list[vid].speed)/Vehicle.max_speed
         #self.lane_reward = - self.lane_reward
-        self.lane_reward = max(self.lane_reward, 20)
+        self.lane_reward = max(min(self.lane_reward, 20), 0) # reward should be possitive, trunccate with 20
 
     def _get_vehicles(self):
         if self.simulator.visual == False:
@@ -645,7 +655,7 @@ class Lane():
                 self.simulator.veh_list[vid]= Vehicle(vid,self.simulator, equipped = random.random()<self.penetration_rate)
             self.simulator.veh_list[vid].lane = self
             self.simulator.veh_list[vid].step()
-            if self.simulator.veh_list[vid].equipped == True and self.simulator.veh_list[vid].lane_position< 125.:
+            if self.simulator.veh_list[vid].equipped == True and self.simulator.veh_list[vid].lane_position< TRUNCATE_DISTANCE:
                 self.detected_car_number += 1
 
 
@@ -673,8 +683,8 @@ if __name__ == '__main__':
     episode_time = 3000
 
     sim = Simulator(episode_time = episode_time,
-                    visual=False,
-                    penetration_rate = 0.5,
+                    visual=True,
+                    penetration_rate = 1.,
                     map_file = 'map/whole-day-training-flow-LuST-12408/traffic.net.xml',
                     route_file = 'map/whole-day-training-flow-LuST-12408/traffic.rou.xml',
                     whole_day = True,
