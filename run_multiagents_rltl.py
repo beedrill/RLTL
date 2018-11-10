@@ -20,7 +20,7 @@ from DQNTL.utils import ReplayMemory
 from DQNTL.policy import GreedyEpsilonPolicy, LinearDecayGreedyEpsilonPolicy
 from DQNTL.objectives import mean_huber_loss
 
-from simulator import Simulator
+from simulator import Simulator, TrafficLightLuxembourg, SimpleTrafficLight
 from simulator_osm import Simulator as Simulator_osm
 
 import pdb ##TODO delete after debugging
@@ -159,7 +159,8 @@ def main():
     parser.add_argument('--simulator', choices=['original', 'osm'], default='osm')
     parser.add_argument('--simple_inputs', action='store_true', help='use simplified inputs with fixed number of states (12)')
     parser.add_argument('--map', choices=['osm_3_intersections', 'osm_13_intersections', 'manhattan_small','manhattan'], default='osm_13_intersections')
-    parser.add_argument('--aggregated_reward', action='store_true', help='choose to combine waiting times to optimize waiting time on entire network instead of individually at each TL')
+    #parser.add_argument('--route', choices=['osm_3_intersections', 'osm_13_intersections', 'manhattan_small','manhattan'], default='osm_13_intersections')
+    #parser.add_argument('--aggregated_reward', action='store_true', help='choose to combine waiting times to optimize waiting time on entire network instead of individually at each TL')
     parser.add_argument('--arrival_rate', default='1', help='arrival rate of cars')
 
 
@@ -192,13 +193,14 @@ def main():
     if args.simulator == 'original':
         env = Simulator(visual=visual,
                         episode_time=episode_time,
-                        num_traffic_state = 11,
+                        num_traffic_state = 27,
                         penetration_rate = args.penetration_rate,
-                        map_file='map/5-intersections/whole-day-flow/traffic.net.xml',
-                        route_file='map/5-intersections/whole-day-flow/traffic-0.rou.xml',
+                        map_file='./map/whole-day-training-flow-LuST-12408/traffic.net.xml',
+                        route_file='./map/whole-day-training-flow-LuST-12408/traffic.rou.xml',
                         whole_day = args.whole_day,
-                        flow_manager_file_prefix='map/5-intersections/whole-day-flow/traffic',
-                        state_representation = args.phase_representation)
+                        flow_manager_file_prefix='./map/whole-day-training-flow-LuST-12408/traffic',
+                        state_representation = args.phase_representation,
+                        traffic_light_module = TrafficLightLuxembourg)
     elif args.simulator == 'osm':
         env = Simulator_osm(visual=visual,
                         episode_time=episode_time,
