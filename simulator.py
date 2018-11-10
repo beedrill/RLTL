@@ -137,6 +137,9 @@ class SimpleTrafficLight(TrafficLight):
 
         TrafficLight.__init__(self, tlid, simulator)
         self.signal_groups = ['rrrrGGGGrrrrGGGG','rrrryyyyrrrryyyy','GGGGrrrrGGGGrrrr','yyyyrrrryyyyrrrr']
+        self.normal_phases = [0,2]
+        self.yellow_phases = [1,3]
+
         self.current_phase = 0  # phase can be 0, 1, 2, 3
         self.current_phase_time = 0
         self.max_time = max_phase_time
@@ -258,7 +261,7 @@ class SimpleTrafficLight(TrafficLight):
                 self.move_to_next_phase()
                 #elif self.correct_action(action):
             #    self.move_to_next_phase()
-        elif self.current_phase in [1,3]:
+        elif self.current_phase in self.yellow_phases:
             # yellow phase, action doesn't affect
             if self.current_phase_time > self.yellow_time:
                 self.move_to_next_phase()
@@ -271,7 +274,7 @@ class SimpleTrafficLight(TrafficLight):
     #def correct_action(self, action):
     #    return action == (self.current_phase + 1) % len(self.actions)
     def check_allow_change_phase(self):
-        if self.current_phase in [0, 2]:
+        if self.current_phase in self.normal_phases:
             if self.current_phase_time>self.min_phase_time:
                 #print self.current_phase_time, self.min_phase_time
                 return True
@@ -294,6 +297,14 @@ class TrafficLightLuxembourg(SimpleTrafficLight):
         SimpleTrafficLight.__init__(self,tlid, simulator, max_phase_time= max_phase_time, min_phase_time = min_phase_time,
             yellow_time = yellow_time, num_traffic_state = num_traffic_state, lane_list = lane_list, state_representation = state_representation)
         self.signal_groups = signal_groups
+        self.yellow_phases = []
+        self.normal_phases = []
+        for idx, phase in enumerate(self.signal_groups):
+            if 'y' in phase.lower():
+                self.yellow_phases.append(idx)
+            else:
+                self.normal_phases.append(idx)
+
 
     def updateRLParameters_original(self):
         lane_list = self.lane_list  # temporary, in the future, get this from the .net.xml file
@@ -614,6 +625,7 @@ class Lane():
         for vid in self.vehicle_list:
             self.lane_reward+=(Vehicle.max_speed - self.simulator.veh_list[vid].speed)/Vehicle.max_speed
         #self.lane_reward = - self.lane_reward
+        self.lane_reward = max(self.lane_reward, 20)
 
     def _get_vehicles(self):
         if self.simulator.visual == False:
