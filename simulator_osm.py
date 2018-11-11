@@ -1,7 +1,7 @@
 try:
     import libsumo
 except ImportError:
-    print 'libsumo not installed properly, please use traci only'
+    print('libsumo not installed properly, please use traci only')
 # comment this line if you dont have pysumo and set visual = True, it should still run traci
 import subprocess
 import traci
@@ -96,7 +96,7 @@ class Simulator():
         self.tl_id_list = tl_list
         max_number_of_lanes = 0
         for tlid in tl_list:
-    	    lanes_ordered_by_signal_order = set(traci.trafficlights.getControlledLanes(tlid))
+            lanes_ordered_by_signal_order = set(traci.trafficlights.getControlledLanes(tlid))
             if len(lanes_ordered_by_signal_order) > max_number_of_lanes:
                 max_number_of_lanes = len(lanes_ordered_by_signal_order)
 

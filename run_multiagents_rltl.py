@@ -21,7 +21,7 @@ from DQNTL.policy import GreedyEpsilonPolicy, LinearDecayGreedyEpsilonPolicy
 from DQNTL.objectives import mean_huber_loss
 
 from simulator import Simulator, TrafficLightLuxembourg, SimpleTrafficLight
-from simulator_osm import Simulator as Simulator_osm
+#from simulator_osm import Simulator as Simulator_osm
 
 import pdb ##TODO delete after debugging
 
@@ -156,7 +156,7 @@ def main():
     parser.add_argument('--day_time', type = int, help = 'specify day time')
     parser.add_argument('--phase_representation', default = 'sign', help = 'specify representation')
     parser.add_argument('--shared_model', action='store_true', help='use a common model between all agents')
-    parser.add_argument('--simulator', choices=['original', 'osm'], default='osm')
+    parser.add_argument('--simulator', choices=['original', 'osm'], default='original')
     parser.add_argument('--simple_inputs', action='store_true', help='use simplified inputs with fixed number of states (12)')
     parser.add_argument('--map', choices=['osm_3_intersections', 'osm_13_intersections', 'manhattan_small','manhattan'], default='osm_13_intersections')
     #parser.add_argument('--route', choices=['osm_3_intersections', 'osm_13_intersections', 'manhattan_small','manhattan'], default='osm_13_intersections')
@@ -214,7 +214,7 @@ def main():
 
     id_list = env.tl_id_list
     num_agents = len(id_list)
-    print num_agents
+    #print num_agents
     #os.system("pause")
     #pdb.set_trace() #TODO delete after debugging
     if tl_state == 1:
@@ -226,7 +226,7 @@ def main():
         window = 1
         preprocessor = TLMAPPreprocessor()
     else:
-        print 'invalid state'
+        print('invalid state')
         return
 
     network = 'DQN'
@@ -347,7 +347,7 @@ def main():
 
         else:  # test
             if not args.load:
-                print 'please load a model'
+                print('please load a model')
                 return
             num_episodes = 1
             if args.whole_day:
@@ -355,9 +355,9 @@ def main():
                 num_episodes = 10
                 env.reset_to_same_time = True
             avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = agents.evaluate(env=env, num_episodes=num_episodes)
-            print 'Evaluation Result for average of {} episodes'.format(num_episodes)
-            print 'average total reward: {} \noverall waiting time: {} \nequipped waiting time: {} \nunequipped waiting time: {}'\
-                .format(avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time)
+            print('Evaluation Result for average of {} episodes'.format(num_episodes))
+            print('average total reward: {} \noverall waiting time: {} \nequipped waiting time: {} \nunequipped waiting time: {}'\
+                .format(avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time))
 
             if args.record:
                 record_file_name = 'record.txt'

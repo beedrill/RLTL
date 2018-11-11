@@ -7,10 +7,12 @@ import os, sys
 if 'SUMO_HOME' in os.environ:
     tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
     sys.path.append(tools)
+    #import traci
+    #f.close()
 else:
     print('warning: no SUMO_HOME declared')
-
 import traci
+
 from time import time
 import numpy as np
 import random

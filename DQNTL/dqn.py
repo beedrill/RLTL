@@ -33,7 +33,7 @@ class DQNAgents:
                  network,
                  input_shape = (1,9),
                  stride=0):
-                    
+
         #self.models = models
         self.preprocessor = preprocessor
         self.memory = memory
@@ -48,7 +48,7 @@ class DQNAgents:
         #self.num_actions = num_actions
         self.env_name = env_name
         self.network = network
-        self.input_shape = input_shape 
+        self.input_shape = input_shape
         self.stride = stride
 
         # counters
@@ -61,25 +61,25 @@ class DQNAgents:
         self.agents = agents
 
     def reset_environment(self, env):
-        """ 
-            reset environment 
-            initialize the game and run random actions specified by 
+        """
+            reset environment
+            initialize the game and run random actions specified by
             random number between 0 to start_random_steps
-        """		
-        
+        """
+
         state = env.reset()
         state = np.expand_dims(state, axis=1)
-        
+
         for _ in range(np.random.randint(self.start_random_steps)):
             action = env.action_space.sample()  # sample random action
             next_state, _, _, _ = env.step(action)
             next_state = np.expand_dims(next_state, axis=1)  # this is required because it is 1 x traffic state size
             state = next_state
-        
+
         return state
 
     def log_tb_value(self, name, value):
-        """ 
+        """
             helper function for logging files
         """
         summary = tf.Summary()
@@ -117,7 +117,7 @@ class DQNAgents:
           How long a single episode should last before the agent
           resets. Can help exploration.
         """
-    
+
         state = None
         self.steps = 0
         self.episodes = 0
@@ -138,7 +138,7 @@ class DQNAgents:
                     # add states to recent states
                     #agent.recent_states.append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
                     agent.recent_states_map[self.steps % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state[agent.index]))
-    
+
                 self.episode_steps = 0
                 episode_reward = np.zeros(len(self.agents))
 
@@ -151,7 +151,7 @@ class DQNAgents:
 
             # this is required because it is 1 x traffic state size
             next_state = np.expand_dims(next_state, axis=1)
-            
+
             #print next_state
             #for agent in self.agents:
                # print agent.index, agent.name
@@ -168,9 +168,9 @@ class DQNAgents:
                 self.preprocessor.process_reward(reward),
                 self.preprocessor.process_state_for_memory(next_state),
                 terminal)
-            
+
             state = next_state
-            
+
 
             episode_reward += reward
 
@@ -182,7 +182,7 @@ class DQNAgents:
                 batch_next_state = batch_next_state.transpose(0, 2, 1, 3, 4)
                 # hacky solution to deal with multiagents since the dimension is added
                 # print batch_state.shape, batch_action.shape, batch_reward.shape, batch_next_state.shape, batch_terminal.shape
-            
+
             for i, agent in enumerate(self.agents):
                 #agent.recent_states.append(self.preprocessor.process_state_for_memory(state[int(agent.name)]))
                 # self.steps + 1 because select action happens after this iteration and doesn't want empty recent list
@@ -200,7 +200,7 @@ class DQNAgents:
                     writer.add_summary(self.log_tb_value(agent.name + '_loss', huber_loss), self.steps)
                     writer.add_summary(self.log_tb_value(agent.name + '_mae_metric', mae_metric), self.steps)
                     writer.add_summary(self.log_tb_value(agent.name + '_reward', reward[i]), self.steps)
-                    
+
                 # save weights
                 if self.steps % save_interval == 0:
                     file_name = '{}_{}_{}_weights_{}.hdf5'.format(self.network, self.env_name, self.steps, agent.name)
@@ -209,12 +209,12 @@ class DQNAgents:
 
             # episode terminal condition
             if terminal or (max_episode_length and self.episode_steps % max_episode_length == 0):
-                print 'episode {} reward {}'.format(self.episodes, episode_reward)
+                print('episode {} reward {}'.format(self.episodes, episode_reward))
                 self.episodes += 1
                 state = None
                 for i, r in enumerate(episode_reward):
                     writer.add_summary(self.log_tb_value(self.agents[i].name + '_episode_reward', r), self.episodes)
-                
+
                 # evaluation
                 if self.steps > self.num_burn_in and self.episodes % self.evaluation_interval == 0:
                     avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = self.evaluate(env, test_eval_steps)
@@ -223,7 +223,7 @@ class DQNAgents:
                     writer.add_summary(self.log_tb_value('waiting time', overall_waiting_time), self.steps)
                     writer.add_summary(self.log_tb_value('DSRC-equipped waiting time', equipped_waiting_time), self.steps)
                     writer.add_summary(self.log_tb_value('DSRC-unequipped waiting time', unequipped_waiting_time), self.steps)
-                    print 'Evaluation reward {}'.format(avg_reward)
+                    print('Evaluation reward {}'.format(avg_reward))
                     if avg_reward < min_reward:
                         min_reward = avg_reward
                         for agent in self.agents:
@@ -238,10 +238,10 @@ class DQNAgents:
                 agent.episode_steps = self.episode_steps
             #print 'check steps '
             #print self.steps, self.agents[0].steps
-        
+
         # evaluate performance
         avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = self.evaluate(env, test_eval_steps)
-        print 'steps: {}, average reward: {}'.format(self.steps, avg_reward)
+        print('steps: {}, average reward: {}'.format(self.steps, avg_reward))
         writer.add_summary(self.log_tb_value('performance', avg_reward), self.steps)
         writer.add_summary(self.log_tb_value('waiting time', overall_waiting_time), self.steps)
         writer.add_summary(self.log_tb_value('DSRC-equipped waiting time', equipped_waiting_time), self.steps)
@@ -251,7 +251,7 @@ class DQNAgents:
 
     def evaluate(self, env, num_episodes, max_episode_length=None):
         """Test your agent with a provided environment.
-        
+
         You shouldn't update your network parameters here. Also if you
         have any layers that vary in behavior between train/test time
         (such as dropout or batch norm), you should set them to test.
@@ -260,11 +260,11 @@ class DQNAgents:
         like cumulative reward, average episode length, etc.
         """
         cumulative_reward = np.zeros(len(self.agents))
-        
+
         cumulative_overall_waiting_time = 0.
         cumulative_equipped_waiting_time = 0.
         cumulative_unequipped_waiting_time = 0.
-        
+
         for episode in range(num_episodes):
 
             test_episode_steps = 0
@@ -279,7 +279,7 @@ class DQNAgents:
                 agent.recent_states_test_map[test_episode_steps % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state[agent.index]))
 
             episode_reward = np.zeros(len(self.agents))
-            
+
             while True:
                 actions = []
                 for agent in self.agents:
@@ -300,18 +300,18 @@ class DQNAgents:
                     break
 
                 test_episode_steps += 1
-                
+
             cumulative_reward += episode_reward/test_episode_steps
             overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = env.get_result()
             cumulative_overall_waiting_time += overall_waiting_time
             cumulative_equipped_waiting_time += equipped_waiting_time
             cumulative_unequipped_waiting_time += unequipped_waiting_time
-                
+
         avg_total_reward = np.sum(cumulative_reward)/num_episodes
-        
+
         return avg_total_reward, cumulative_overall_waiting_time/num_episodes,cumulative_equipped_waiting_time/num_episodes,cumulative_unequipped_waiting_time/num_episodes
-            
-  
+
+
 class DQNAgent:
     """Class implementing DQN.
 
@@ -372,7 +372,7 @@ class DQNAgent:
                  input_shape=(1, 9),
                  index = 0,
                  stride=0):
-                    
+
         self.model = model
         self.preprocessor = preprocessor
         self.memory = memory
@@ -396,17 +396,17 @@ class DQNAgent:
         self.recent_states_map = [None] * (self.stride + 1)
         for i in range(self.stride + 1):
             self.recent_states_map[i] = deque(maxlen=self.window_length)
-        
+
         self.recent_states_test_map = [None] * (self.stride + 1)
         for i in range(self.stride + 1):
             self.recent_states_test_map[i] = deque(maxlen=self.window_length)
 
         #self.recent_states = deque(maxlen=self.window_length) # store in float32
         #self.recent_states_test = deque(maxlen=self.window_length) # store in float32
-        
+
         self.uniform_policy = UniformRandomPolicy(self.num_actions)
         self.test_policy = GreedyPolicy()
-        
+
         # counters
         self.steps = 0  # number of total steps
         self.episodes = 0  # index of current episodes
@@ -424,7 +424,7 @@ class DQNAgent:
 
         This is a good place to create the target network, setup your
         loss function and any placeholders you might need.
-        
+
         You should use the mean_huber_loss function as your
         loss_function. You can also experiment with MSE and other
         losses.
@@ -439,39 +439,39 @@ class DQNAgent:
         with tf.name_scope('target_model'):
             self.target_model = Model.from_config(config)
         self.target_model.set_weights(self.model.get_weights()) # copy weights
-        
-        # compile online and target models		
+
+        # compile online and target models
         self.model.compile(loss=loss_func, optimizer=optimizer, metrics=metrics)
         self.target_model.compile(optimizer=optimizer, loss=loss_func, metrics=metrics)
-            
+
         # loss
         def custom_loss(args):
             y_true, y_pred, action_mask = args
             loss = loss_func(y_true*action_mask, y_pred*action_mask)
             return loss
-        
+
         losses = [lambda y_true, y_pred: y_pred, lambda y_true, y_pred: tf.zeros_like(y_pred),]
-        
+
         # inputs to the custom loss layer
         with tf.name_scope('y_pred'):
             y_pred = self.model.output
         y_true = Input(shape=(self.num_actions, ), name='y_true')
         action_mask = Input(shape=(self.num_actions, ), name='action_mask')
-        
+
         # custom loss layer for updating loss only for a specific action
         loss_out = Lambda(custom_loss, output_shape=(1, ), name='loss_layer')([y_pred, y_true, action_mask])
-        
+
         # model for training
         model_train = Model(input=[self.model.input, y_true, action_mask], output=[loss_out, y_pred])
-        
-        # compile model	
+
+        # compile model
         model_train.compile(loss=losses, optimizer=optimizer, metrics=metrics)
         self.model_train = model_train
-        
+
         # print out summary
-        print 'model summary'
+        print('model summary')
         print(self.model.summary())
-        print 'target model summary'
+        print('target model summary')
         print(self.target_model.summary())
 
     def calc_q_values_model(self, states):
@@ -530,12 +530,12 @@ class DQNAgent:
                     # print 'check recent states'
                     # for recent_states in self.recent_states_map:
                         # print len(recent_states)
-                    
+
                 #states = list(self.recent_states)
                 # if not enough states, append 0
                 if not type(states[0]) == np.ndarray or np.isnan(states).any():
-                    print 'state is nan'
-                    print type(states[0])
+                    print('state is nan')
+                    print(type(states[0]))
                     states = [np.zeros(self.input_shape)]
 
                 try:
@@ -545,14 +545,14 @@ class DQNAgent:
                     q_values = self.calc_q_values_model(np.array([states])).flatten()
                     action = self.policy.select_action(q_values)
                 except:
-                    print 'Exception in select action'
-                    print states.shape
+                    print('Exception in select action')
+                    print(states.shape)
 
         return action
-        
+
     def select_greedy_actions(self, batch_state):
-        """ 
-        select greedy action to according to the state input 
+        """
+        select greedy action to according to the state input
         mainly used for double DQN
         """
         q_values = self.calc_q_values_model(batch_state)
@@ -576,7 +576,7 @@ class DQNAgent:
         """
         huber_loss = None
         mae_metric = None
-        
+
         if self.steps > self.num_burn_in and self.steps % self.train_freq == 0:
             if sample:
                 batch_state, batch_action, batch_reward, batch_next_state, batch_terminal = sample
@@ -590,14 +590,14 @@ class DQNAgent:
 
             if self.network == 'DQN' or self.network == 'duelDQN':
                 target_q_values = np.min(target_q_values, 1).flatten()
-            
+
             elif self.network == 'doubleDQN':
                 actions = self.select_greedy_actions(batch_next_state)
                 target_q_values = target_q_values[range(self.batch_size), actions]
 
             # target discounted reward
             target_reward = self.gamma*target_q_values*batch_terminal + batch_reward
-            
+
             target = np.zeros((self.batch_size, self.num_actions))
             dummy_target = np.zeros((self.batch_size, ))
             action_mask = np.zeros((self.batch_size, self.num_actions))
@@ -609,23 +609,23 @@ class DQNAgent:
 
             # update model
             loss_metric= self.model_train.train_on_batch([batch_state, np.array(target, dtype='float32'), np.array(action_mask, dtype='float32')], [dummy_target, np.array(target, dtype='float32')])
-            
+
             huber_loss = loss_metric[0]
             mae_metric = loss_metric[3]
-            
+
         # update target model
         if self.steps % self.target_update_freq == 0:
             self.hard_target_model_updates()
-        
+
         return huber_loss, mae_metric
-    
+
     def reset_environment(self, env):
-        """ 
-            reset environment 
-            initialize the game and run random actions specified by 
+        """
+            reset environment
+            initialize the game and run random actions specified by
             random number between 0 to start_random_steps
-        """		
-        
+        """
+
         state = env.reset()
         #state = state[0]
         #state = np.expand_dims(state, axis=0)
@@ -636,11 +636,11 @@ class DQNAgent:
             #next_state = next_state[0]
             #next_state = np.expand_dims(next_state, axis=0)
             state = next_state
-        
+
         return state
-        
+
     def log_tb_value(self, name, value):
-        """ 
+        """
             helper function for logging files
         """
         summary = tf.Summary()
@@ -678,7 +678,7 @@ class DQNAgent:
           How long a single episode should last before the agent
           resets. Can help exploration.
         """
-    
+
         state = None
         self.steps= 0
         self.episodes = 0
@@ -692,14 +692,14 @@ class DQNAgent:
                 state = self.reset_environment(env)
                 for recent_states in self.recent_states_map:
                     recent_states.clear()  # reset the recent states buffer
-                    
+
                 #self.recent_states.clear()  # reset the recent states buffer
 
                 # states = list(self.recent_states)
                 # if len(states) != 0  and (not type(states[0])==np.ndarray or np.isnan(states).any()):
                 #     print 'state is nan after clear'
                 #     print type(states[0])
-    
+
                 self.episode_steps = 0
                 episode_reward = 0
                 # add states to recent states
@@ -710,7 +710,7 @@ class DQNAgent:
                 #     print 'state is nan after append from reset'
                 #     print type(states[0])
 
-            # select action 
+            # select action
             action = self.select_action()
             #print 'before', action
             decoded_action = env.decode_action(action)
@@ -722,10 +722,10 @@ class DQNAgent:
             reward = np.sum(reward)
 
             if type(next_state) is not np.ndarray:
-                print 'wrong'
+                print('wrong')
             elif np.isnan(next_state).any():
-                print 'some nan in state'
-            
+                print('some nan in state')
+
             # add sample to replay memory
             self.memory.append(
                 self.preprocessor.process_state_for_memory(state),
@@ -733,10 +733,10 @@ class DQNAgent:
                 self.preprocessor.process_reward(reward),
                 self.preprocessor.process_state_for_memory(next_state),
                 terminal)
-            
+
             state = next_state
-            
-            
+
+
             # add states to recent states
             #self.recent_states.append(self.preprocessor.process_state_for_memory(state))
             self.recent_states_map[self.steps % (self.stride + 1)].append(self.preprocessor.process_state_for_memory(state))
@@ -755,7 +755,7 @@ class DQNAgent:
                 writer.add_summary(self.log_tb_value('loss', huber_loss), self.steps)
                 writer.add_summary(self.log_tb_value('mae_metric', mae_metric), self.steps)
                 writer.add_summary(self.log_tb_value('reward', reward), self.steps)
-                
+
             # save weights
             if self.steps % save_interval == 0:
                 file_name = '{}_{}_{}_weights.hdf5'.format(self.network, self.env_name, self.steps)
@@ -764,12 +764,12 @@ class DQNAgent:
 
             # episode terminal condition
             if terminal or (max_episode_length and self.episode_steps % max_episode_length == 0):
-                print 'episode {} reward {}'.format(self.episodes, episode_reward)
+                print('episode {} reward {}'.format(self.episodes, episode_reward))
                 self.episodes += 1
                 state = None
                 writer.add_summary(self.log_tb_value('episode_reward', episode_reward), self.episodes)
                 writer.add_summary(self.log_tb_value('episode_length', self.episode_steps), self.episodes)
-                
+
                 # evaluation
                 if self.steps > self.num_burn_in and self.episodes % self.evaluation_interval == 0:
                     avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = self.evaluate(env, test_eval_steps)
@@ -778,7 +778,7 @@ class DQNAgent:
                     writer.add_summary(self.log_tb_value('waiting time', overall_waiting_time), self.steps)
                     writer.add_summary(self.log_tb_value('DSRC-equipped waiting time', equipped_waiting_time), self.steps)
                     writer.add_summary(self.log_tb_value('DSRC-unequipped waiting time', unequipped_waiting_time), self.steps)
-                    print 'Evaluation reward {}'.format(avg_reward)
+                    print('Evaluation reward {}'.format(avg_reward))
                     if avg_reward < min_reward:
                         min_reward = avg_reward
                         file_name = '{}_{}_best_weights.hdf5'.format(self.network, self.env_name)
@@ -787,10 +787,10 @@ class DQNAgent:
             # counter update
             self.steps += 1
             self.episode_steps += 1
-        
+
         # evaluate performance
         avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = self.evaluate(env, test_eval_steps)
-        print 'steps: {}, average reward: {}'.format(self.steps, avg_reward)
+        print('steps: {}, average reward: {}'.format(self.steps, avg_reward))
         writer.add_summary(self.log_tb_value('performance', avg_reward), self.steps)
         writer.add_summary(self.log_tb_value('waiting time', overall_waiting_time), self.steps)
         writer.add_summary(self.log_tb_value('DSRC-equipped waiting time', equipped_waiting_time), self.steps)
@@ -800,7 +800,7 @@ class DQNAgent:
 
     def evaluate(self, env, num_episodes, max_episode_length=None):
         """Test your agent with a provided environment.
-        
+
         You shouldn't update your network parameters here. Also if you
         have any layers that vary in behavior between train/test time
         (such as dropout or batch norm), you should set them to test.
@@ -813,7 +813,7 @@ class DQNAgent:
         cumulative_overall_waiting_time = 0.
         cumulative_equipped_waiting_time = 0.
         cumulative_unequipped_waiting_time = 0.
-        
+
         for episode in range(num_episodes):
 
             test_episode_steps = 0
@@ -845,18 +845,18 @@ class DQNAgent:
                         break
 
                 test_episode_steps += 1
-                
+
             cumulative_reward += episode_reward/test_episode_steps
             overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = env.get_result()
-            print  overall_waiting_time,equipped_waiting_time,unequipped_waiting_time
+            print(overall_waiting_time,equipped_waiting_time,unequipped_waiting_time)
             cumulative_overall_waiting_time += overall_waiting_time
             cumulative_equipped_waiting_time += equipped_waiting_time
             cumulative_unequipped_waiting_time += unequipped_waiting_time
-                
+
         avg_total_reward = float(cumulative_reward)/num_episodes
         #overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = env.get_result()
-        
-        return avg_total_reward, cumulative_overall_waiting_time/num_episodes,cumulative_equipped_waiting_time/num_episodes,cumulative_unequipped_waiting_time/num_episodes		       	
+
+        return avg_total_reward, cumulative_overall_waiting_time/num_episodes,cumulative_equipped_waiting_time/num_episodes,cumulative_unequipped_waiting_time/num_episodes
 
     def hard_target_model_updates(self):
         """
@@ -864,4 +864,3 @@ class DQNAgent:
         directly to the target network.
         """
         self.target_model.set_weights(self.model.get_weights())
-
