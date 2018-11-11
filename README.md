@@ -1,6 +1,8 @@
 # README
 README for Traffic Light Optimization using DQN
 
+This branch is to adapt SUMO 0.26.0 for testing LuST environment
+
 ## Setup environment
 - virtualenv --system-site-packages DQN_ENV
     - need to inherit pysumo
