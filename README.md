@@ -37,7 +37,7 @@ python run_multiagents_rltl.py
 
 ### Evaluate
 ```
-python run_multiagents_rltl.py --mode test --load [weights.hdf5]
+python run_multiagents_rltl.py --mode test --load [weights.hdf5] --phase_representation original --record --whole_day
 ```
 - currently, weights are saved as ~weights_[agent id].hdf5, so when you load, remove letters after weights
     - e.g. DQN_SUMO_best_weights_0.hdf5 => DQN_SUMO_best_weights
