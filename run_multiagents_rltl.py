@@ -162,6 +162,7 @@ def main():
     #parser.add_argument('--route', choices=['osm_3_intersections', 'osm_13_intersections', 'manhattan_small','manhattan'], default='osm_13_intersections')
     #parser.add_argument('--aggregated_reward', action='store_true', help='choose to combine waiting times to optimize waiting time on entire network instead of individually at each TL')
     parser.add_argument('--arrival_rate', default='1', help='arrival rate of cars')
+    parser.add_argument('--Luxembourg_intersection', type = int, default = 12408, help = 'specify intersection number')
 
 
     args = parser.parse_args()
@@ -195,12 +196,13 @@ def main():
                         episode_time=episode_time,
                         num_traffic_state = 27,
                         penetration_rate = args.penetration_rate,
-                        map_file='./map/whole-day-training-flow-LuST-12408/traffic.net.xml',
-                        route_file='./map/whole-day-training-flow-LuST-12408/traffic.rou.xml',
+                        config_file = './map/LuSTScenario/scenario/due.static.sumocfg',
                         whole_day = args.whole_day,
                         flow_manager_file_prefix='./map/whole-day-training-flow-LuST-12408/traffic',
                         state_representation = args.phase_representation,
-                        traffic_light_module = TrafficLightLuxembourg)
+                        traffic_light_module = TrafficLightLuxembourg,
+                        tl_list = ['-' + str(args.Luxembourg_intersection)])
+
     elif args.simulator == 'osm':
         env = Simulator_osm(visual=visual,
                         episode_time=episode_time,
@@ -314,7 +316,7 @@ def main():
 
         if args.load:
             for agent in agents.agents:
-                weight_name = args.load + '_' + agent.name + '.hdf5'
+                weight_name = args.load + '_0.hdf5'
                 agent.model.load_weights(weight_name)
 
         if args.mode == 'train':
@@ -350,10 +352,10 @@ def main():
                 print('please load a model')
                 return
             num_episodes = 1
-            if args.whole_day:
-                env.flow_manager.travel_to_time(args.day_time)
-                num_episodes = 10
-                env.reset_to_same_time = True
+            #if args.whole_day:
+                #env.flow_manager.travel_to_time(args.day_time)
+                #num_episodes = 10
+                #env.reset_to_same_time = True
             avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = agents.evaluate(env=env, num_episodes=num_episodes)
             print('Evaluation Result for average of {} episodes'.format(num_episodes))
             print('average total reward: {} \noverall waiting time: {} \nequipped waiting time: {} \nunequipped waiting time: {}'\
@@ -362,7 +364,7 @@ def main():
             if args.record:
                 record_file_name = 'record.txt'
                 f = open(record_file_name,'a')
-                f.write('{}\t{}\t{}\n'.format(overall_waiting_time,equipped_waiting_time,unequipped_waiting_time))
+                f.write('{}\n{}\n{}\n'.format(overall_waiting_time,equipped_waiting_time,unequipped_waiting_time))
                 f.close()
             env.stop()
 

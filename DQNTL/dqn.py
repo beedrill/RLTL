@@ -303,13 +303,13 @@ class DQNAgents:
 
             cumulative_reward += episode_reward/test_episode_steps
             overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = env.get_result()
-            cumulative_overall_waiting_time += overall_waiting_time
-            cumulative_equipped_waiting_time += equipped_waiting_time
-            cumulative_unequipped_waiting_time += unequipped_waiting_time
+            #cumulative_overall_waiting_time += overall_waiting_time
+            #cumulative_equipped_waiting_time += equipped_waiting_time
+            #cumulative_unequipped_waiting_time += unequipped_waiting_time
 
         avg_total_reward = np.sum(cumulative_reward)/num_episodes
 
-        return avg_total_reward, cumulative_overall_waiting_time/num_episodes,cumulative_equipped_waiting_time/num_episodes,cumulative_unequipped_waiting_time/num_episodes
+        return avg_total_reward, overall_waiting_time,equipped_waiting_time,unequipped_waiting_time
 
 
 class DQNAgent:

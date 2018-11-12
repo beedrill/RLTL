@@ -3,7 +3,7 @@ try:
 except ImportError:
     print('libsumo not installed properly, please use traci only')
 # comment this line if you dont have pysumo and set visual = True, it should still run traci
-import os, sys
+import os, sys, subprocess
 if 'SUMO_HOME' in os.environ:
     tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
     sys.path.append(tools)
@@ -321,22 +321,24 @@ class TrafficLightLuxembourg(SimpleTrafficLight):
         sim = self.simulator
         self.reward = 0
 
-        car_normalizing_number = 20. #1. # TODO generalize by length / car length
+        #car_normalizing_number = 20. #1. # TODO generalize by length / car length
         n_lane = len(lane_list)
 
         # Traffic State 1
         for i in range(0, n_lane):
-            self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number/car_normalizing_number
+            lane = sim.lane_list[lane_list[i]]
+            self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number/lane.car_normalizing_number
             #temp = sim.lane_list[lane_list[i]].length
-            temp = TRUNCATE_DISTANCE
-            for vid in sim.lane_list[lane_list[i]].vehicle_list:
+            temp = min(TRUNCATE_DISTANCE, lane.length)
+
+            for vid in lane.vehicle_list:
                 v = sim.veh_list[vid]
                 if v.equipped == False:
                     continue
                 if v.lane_position < temp and v.equipped:
                     temp = sim.veh_list[vid].lane_position
             #self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
-            self.traffic_state[i+n_lane] = 1 - temp / TRUNCATE_DISTANCE # TODO generalize
+            self.traffic_state[i+n_lane] = 1 - temp / min(TRUNCATE_DISTANCE, lane.length) # TODO generalize
             #self.traffic_state[i+4] = temp
             self.reward += sim.lane_list[lane_list[i]].lane_reward
 
@@ -345,7 +347,20 @@ class TrafficLightLuxembourg(SimpleTrafficLight):
         self.traffic_state[2*n_lane+1] = self.current_phase
 
         if self.simulator.whole_day:
-            self.traffic_state[2*n_lane+2] = self.simulator.current_day_time/float(24)
+            #self.traffic_state[2*n_lane+2] = self.simulator.current_day_time/float(24)
+            time = self.simulator.time
+            if time<1824:
+                day_time = 0;
+            elif time>88223:
+                day_time = 23;
+            else:
+                day_time = int((time-1824)/3600)
+
+            if not self.simulator.current_day_time == day_time:
+                self.simulator.current_day_time = day_time
+                print('time comes to {} o clock'.format(day_time))
+            self.traffic_state[2*n_lane+2] = day_time
+        print(self.traffic_state)
 
 
 
@@ -374,14 +389,18 @@ class Simulator():
                  whole_day = False,
                  state_representation = 'sign',
                  flow_manager_file_prefix = 'map/whole-day-flow/traffic',
-                 traffic_light_module = SimpleTrafficLight):
+                 traffic_light_module = SimpleTrafficLight,
+                 tl_list = ['12408'],
+                 config_file = ''):
         self.visual = visual
         self.map_file = map_file
+        self.config_file = config_file
         self.end_time = end_time
         self.route_file = route_file
         self.additional_file = additional_file
         self.gui_setting_file = gui_setting_file
         self.veh_list = {}
+        self.timely_veh_list = [[] for i in range(0,24)]
         self.tl_list = {}
         self.is_started = False
         self.time = 0
@@ -395,7 +414,7 @@ class Simulator():
         #tl_list = ['0'] # temporary, in the future, get this from .net.xml file
         #self.tl_id_list = tl_list
         self.num_traffic_state = num_traffic_state
-        self._init_sumo_info()
+        self._init_sumo_info(tl_list = tl_list)
         #for tlid in tl_list:
         #    self.tl_list[tlid] = SimpleTrafficLight(tlid, self, num_traffic_state = self.num_traffic_state)
         ###RL parameters
@@ -416,16 +435,20 @@ class Simulator():
                   '--end', str(self.end_time)]
             if not additional_file == None:
                 self.cmd+=['--additional-files', self.additional_file]
+            if config_file:
+                self.cmd = ['sumo', '-c', config_file]
 
         else:
             self.cmd = ['sumo-gui',
                   '--net-file', self.map_file,
                   '--route-files', self.route_file,
                   '--end', str(self.end_time)]
+            if config_file:
+                self.cmd = ['sumo-gui', '-c', config_file]
 
         if whole_day:
             self.flow_manager = HourlyFlowManager(self, file_name=flow_manager_file_prefix)
-            self.flow_manager.travel_to_random_time() #this will travel to a random current_day_time and modifie the carflow accordingly
+            #self.flow_manager.travel_to_random_time() #this will travel to a random current_day_time and modifie the carflow accordingly
         if not additional_file == None:
             self.cmd+=['--additional-files', self.additional_file]
         if not gui_setting_file == None:
@@ -438,27 +461,31 @@ class Simulator():
         for l in self.lane_list:
             self.lane_list[l].step()
 
-    def _init_sumo_info(self):
+    def _init_sumo_info(self, tl_list = []):
         cmd = ['sumo',
                   '--net-file', self.map_file,
                   '--route-files', self.route_file,
                   '--end', str(self.end_time)]
-        traci.start(cmd)
+        sumoProcess = subprocess.Popen("%s %s" % ('sumo', self.config_file), shell=True, stdout=sys.stdout)
+        traci.init(port=8813, numRetries=10, host='localhost', label='default')
         #time.sleep(1)
-        tl_list = traci.trafficlights.getIDList()
+        #tl_list = traci.trafficlights.getIDList()
         #print 'tls:',tl_list
         self.tl_id_list = tl_list
-
+        lane_list = []
         for tlid in tl_list:
-            self.tl_list[tlid] = self.traffic_light_module(tlid, self, num_traffic_state = self.num_traffic_state, lane_list = remove_duplicates(traci.trafficlights.getControlledLanes(tlid)),state_representation = self.state_representation)
+            tl_lane_list = remove_duplicates(traci.trafficlights.getControlledLanes(tlid))
+            self.tl_list[tlid] = self.traffic_light_module(tlid, self, num_traffic_state = self.num_traffic_state, lane_list = tl_lane_list,state_representation = self.state_representation)
+            lane_list = lane_list+tl_lane_list
             #print 'controlled lane', self.tl_list[tlid].lane_list
-        lane_list = traci.lane.getIDList()
+        #lane_list = traci.lane.getIDList()
         self.lane_list = {}
         for l in lane_list:
             #print 'lane list', lane_list
             if l.startswith(':'):
                 continue
             self.lane_list[l] = Lane(l,self,penetration_rate=self.penetration_rate, length = traci.lane.getLength(l))
+            print("lane{}, length{}".format(l,self.lane_list[l].length))
             #print 'lane list', l
 
         #print len(self.lane_list.keys())
@@ -469,7 +496,9 @@ class Simulator():
             libsumo.start(self.cmd)
             return
         else:
-            traci.start(self.cmd)
+            #traci.start(self.cmd)
+            sumoProcess = subprocess.Popen("%s %s" % ('sumo-gui', self.config_file), shell=True, stdout=sys.stdout)
+            traci.init(port=8813, numRetries=10, host='localhost', label='default')
             return
 
 
@@ -503,6 +532,9 @@ class Simulator():
 
     def step(self, actions):
         self._simulation_step()
+        # print('lane list',self.lane_list)
+        # print('lane list length', len(self.lane_list))
+        # input()
         for l in self.lane_list:
             self.lane_list[l].step()
 
@@ -525,7 +557,7 @@ class Simulator():
         #    print 'something wrong', observation[0][0], type(observation[0][0])
         #print reward
 
-        return observation, reward, self.time == self.episode_time, info
+        return observation, reward, traci.simulation.getMinExpectedNumber() == 0, info
 
     def start(self):
         self._simulation_start()
@@ -576,15 +608,32 @@ class Simulator():
         return np.array(observation)
 
     def get_result(self):
+        average_waiting_time_list = []
+        equipped_average_waiting_time_list = []
+        nonequipped_average_waiting_time_list = []
+
+        for hour in range(0,24):
+            average_waiting_time,equipped_average_waiting_time,nonequipped_average_waiting_time = self.average_hourly_waiting_time(hour)
+            average_waiting_time_list.append(average_waiting_time)
+            equipped_average_waiting_time_list.append(equipped_average_waiting_time)
+            nonequipped_average_waiting_time_list.append(nonequipped_average_waiting_time)
+
+        #print n_equipped, equipped_waiting
+        return average_waiting_time_list,equipped_average_waiting_time_list,nonequipped_average_waiting_time_list
+    def print_status(self):
+        #print self.veh_list
+        tl = self.tl_list[self.tl_id_list[0]]
+        print('current time:', self.time, ' total cars:', len(self.veh_list.keys()), 'traffic status', tl.traffic_state, 'reward:', tl.reward)
+
+    def average_hourly_waiting_time(self,hour):
+        vlist = self.timely_veh_list[hour]
+        n_total = 0.
         total_waiting = 0.
         equipped_waiting = 0.
         non_equipped_waiting = 0.
-
-        n_total = 0.
         n_equipped = 0.
         n_non_equipped = 0.
-
-        for vid in self.veh_list:
+        for vid in vlist:
             v = self.veh_list[vid]
 
             n_total += 1
@@ -596,18 +645,10 @@ class Simulator():
                 n_non_equipped += 1
                 non_equipped_waiting += v.waiting_time
 
-
-        self.average_waiting_time = total_waiting/n_total if n_total>0 else 0
-        self.equipped_average_waiting_time = equipped_waiting/n_equipped if n_equipped>0 else 0
-        self.nonequipped_average_waiting_time = non_equipped_waiting/n_non_equipped if n_non_equipped>0 else 0
-        #print n_equipped, equipped_waiting
-        return self.average_waiting_time,self.equipped_average_waiting_time, self.nonequipped_average_waiting_time
-    def print_status(self):
-        #print self.veh_list
-        tl = self.tl_list[self.tl_id_list[0]]
-        print('current time:', self.time, ' total cars:', len(self.veh_list.keys()), 'traffic status', tl.traffic_state, 'reward:', tl.reward)
-
-
+        average_waiting_time = total_waiting/n_total if n_total>0 else 0
+        equipped_average_waiting_time = equipped_waiting/n_equipped if n_equipped>0 else 0
+        nonequipped_average_waiting_time = non_equipped_waiting/n_non_equipped if n_non_equipped>0 else 0
+        return average_waiting_time, equipped_average_waiting_time, nonequipped_average_waiting_time
 
 
     def record_result(self):
@@ -630,6 +671,7 @@ class Lane():
         self.detected_car_number = 0
         self.lane_reward = 0
         self.penetration_rate = penetration_rate
+        self.car_normalizing_number = self.length/6
 
     def update_lane_reward(self):
         self.lane_reward = 0
@@ -655,6 +697,7 @@ class Lane():
         for vid in vidlist:
             if not vid in self.simulator.veh_list.keys():
                 self.simulator.veh_list[vid]= Vehicle(vid,self.simulator, equipped = random.random()<self.penetration_rate)
+                self.simulator.timely_veh_list[self.simulator.current_day_time].append(vid)
             self.simulator.veh_list[vid].lane = self
             self.simulator.veh_list[vid].step()
             if self.simulator.veh_list[vid].equipped == True and self.simulator.veh_list[vid].lane_position< TRUNCATE_DISTANCE:
