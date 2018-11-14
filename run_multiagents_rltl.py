@@ -195,10 +195,10 @@ def main():
                         episode_time=episode_time,
                         num_traffic_state = 27,
                         penetration_rate = args.penetration_rate,
-                        map_file='./map/whole-day-training-flow-LuST-12408/traffic.net.xml',
-                        route_file='./map/whole-day-training-flow-LuST-12408/traffic.rou.xml',
+                        map_file='./map/whole-day-training-flow-LuST-DUA-12408/traffic.net.xml',
+                        route_file='./map/whole-day-training-flow-LuST-DUA-12408/traffic-0.rou.xml',
                         whole_day = args.whole_day,
-                        flow_manager_file_prefix='./map/whole-day-training-flow-LuST-12408/traffic',
+                        flow_manager_file_prefix='./map/whole-day-training-flow-LuST-DUA-12408/traffic',
                         state_representation = args.phase_representation,
                         traffic_light_module = TrafficLightLuxembourg)
     elif args.simulator == 'osm':
