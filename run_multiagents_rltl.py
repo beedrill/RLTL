@@ -195,12 +195,13 @@ def main():
                         episode_time=episode_time,
                         num_traffic_state = 27,
                         penetration_rate = args.penetration_rate,
-                        map_file='./map/whole-day-training-flow-LuST-DUA-12408/traffic.net.xml',
-                        route_file='./map/whole-day-training-flow-LuST-DUA-12408/traffic-0.rou.xml',
+                        map_file='./map/LuxembougDetailed-DUA-12408/traffic.net.xml',
+                        route_file='./map/LuxembougDetailed-DUA-12408/traffic-0.rou.xml',
                         whole_day = args.whole_day,
-                        flow_manager_file_prefix='./map/whole-day-training-flow-LuST-DUA-12408/traffic',
+                        flow_manager_file_prefix='./map/LuxembougDetailed-DUA-12408/traffic',
                         state_representation = args.phase_representation,
-                        traffic_light_module = TrafficLightLuxembourg)
+                        traffic_light_module = TrafficLightLuxembourg,
+                        tl_list = ['0'])
     elif args.simulator == 'osm':
         env = Simulator_osm(visual=visual,
                         episode_time=episode_time,
@@ -272,7 +273,7 @@ def main():
                 preprocessor=preprocessor,
                 memory=memory,
                 policy=policy,
-                gamma=0.9,
+                gamma=0.99,
                 target_update_freq=target_update_freq,
                 num_burn_in=num_burn_in,
                 train_freq=train_freq,
@@ -314,6 +315,7 @@ def main():
 
         if args.load:
             for agent in agents.agents:
+
                 weight_name = args.load + '_' + agent.name + '.hdf5'
                 agent.model.load_weights(weight_name)
 

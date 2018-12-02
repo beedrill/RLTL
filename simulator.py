@@ -316,28 +316,31 @@ class TrafficLightLuxembourg(SimpleTrafficLight):
             else:
                 self.normal_phases.append(idx)
 
-
+    def updateRLParameters_sign(self):
+        print("sign representation is currently unavailable")
     def updateRLParameters_original(self):
+
         lane_list = self.lane_list  # temporary, in the future, get this from the .net.xml file
         sim = self.simulator
         self.reward = 0
 
-        car_normalizing_number = 20. #1. # TODO generalize by length / car length
+        #car_normalizing_number = 20. #1. # TODO generalize by length / car length
         n_lane = len(lane_list)
 
         # Traffic State 1
         for i in range(0, n_lane):
-            self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number/car_normalizing_number
+            lane = sim.lane_list[lane_list[i]]
+            self.traffic_state[i] = lane.detected_car_number/lane.car_normalizing_number
             #temp = sim.lane_list[lane_list[i]].length
-            temp = TRUNCATE_DISTANCE
-            for vid in sim.lane_list[lane_list[i]].vehicle_list:
+            temp = min(TRUNCATE_DISTANCE, lane.length)
+            for vid in lane.vehicle_list:
                 v = sim.veh_list[vid]
                 if v.equipped == False:
                     continue
                 if v.lane_position < temp and v.equipped:
                     temp = sim.veh_list[vid].lane_position
             #self.traffic_state[i+4] = temp/float(sim.lane_list[lane_list[i]].length)
-            self.traffic_state[i+n_lane] = 1 - temp / TRUNCATE_DISTANCE # TODO generalize
+            self.traffic_state[i+n_lane] = 1 - temp / min(TRUNCATE_DISTANCE, lane.length) # TODO generalize
             #self.traffic_state[i+4] = temp
             self.reward += sim.lane_list[lane_list[i]].lane_reward
 
@@ -348,7 +351,7 @@ class TrafficLightLuxembourg(SimpleTrafficLight):
         if self.simulator.whole_day:
             self.traffic_state[2*n_lane+2] = self.simulator.current_day_time/float(24)
 
-
+        #print(self.traffic_state)
 
 class Simulator():
     """
@@ -375,7 +378,8 @@ class Simulator():
                  whole_day = False,
                  state_representation = 'sign',
                  flow_manager_file_prefix = 'map/whole-day-flow/traffic',
-                 traffic_light_module = SimpleTrafficLight):
+                 traffic_light_module = SimpleTrafficLight,
+                 tl_list = None):
         self.visual = visual
         self.map_file = map_file
         self.end_time = end_time
@@ -396,7 +400,8 @@ class Simulator():
         #tl_list = ['0'] # temporary, in the future, get this from .net.xml file
         #self.tl_id_list = tl_list
         self.num_traffic_state = num_traffic_state
-        self._init_sumo_info()
+
+        self._init_sumo_info(tl_list = tl_list)
         #for tlid in tl_list:
         #    self.tl_list[tlid] = SimpleTrafficLight(tlid, self, num_traffic_state = self.num_traffic_state)
         ###RL parameters
@@ -414,7 +419,7 @@ class Simulator():
             self.cmd = ['sumo',
                   '--net-file', self.map_file,
                   '--route-files', self.route_file,
-                  '--end', str(self.end_time)]
+                  '--end', str(self.end_time), '--random']
             if not additional_file == None:
                 self.cmd+=['--additional-files', self.additional_file]
 
@@ -439,21 +444,26 @@ class Simulator():
         for l in self.lane_list:
             self.lane_list[l].step()
 
-    def _init_sumo_info(self):
+    def _init_sumo_info(self, tl_list = None):
         cmd = ['sumo',
                   '--net-file', self.map_file,
                   '--route-files', self.route_file,
                   '--end', str(self.end_time)]
         traci.start(cmd)
         #time.sleep(1)
-        tl_list = traci.trafficlights.getIDList()
-        #print 'tls:',tl_list
-        self.tl_id_list = tl_list
-
-        for tlid in tl_list:
-            self.tl_list[tlid] = self.traffic_light_module(tlid, self, num_traffic_state = self.num_traffic_state, lane_list = remove_duplicates(traci.trafficlights.getControlledLanes(tlid)),state_representation = self.state_representation)
+        if tl_list:
+            self.tl_id_list = tl_list
+        else:
+            tl_list = traci.trafficlights.getIDList()
+            #print 'tls:',tl_list
+            self.tl_id_list = tl_list
+        lane_list = []
+        for tlid in self.tl_id_list:
+            tl_lane_list = remove_duplicates(traci.trafficlights.getControlledLanes(tlid))
+            self.tl_list[tlid] = self.traffic_light_module(tlid, self, num_traffic_state = self.num_traffic_state, lane_list = tl_lane_list,state_representation = self.state_representation)
+            lane_list = lane_list + tl_lane_list
             #print 'controlled lane', self.tl_list[tlid].lane_list
-        lane_list = traci.lane.getIDList()
+        #lane_list = traci.lane.getIDList()
         self.lane_list = {}
         for l in lane_list:
             #print 'lane list', lane_list
@@ -563,7 +573,6 @@ class Simulator():
             self.lane_list[l].reset()
             self.lane_list[l].update_lane_reward()
 
-        #print 'haha', self.tl_id_list
         for tlid in self.tl_id_list:
             tl = self.tl_list[tlid]
             #print actions
@@ -572,8 +581,7 @@ class Simulator():
             tl.updateRLParameters()
             observation.append(tl.traffic_state)
             reward.append(self.tl_list[tlid].reward)
-            #i += 1
-        #print 'haha', observation
+
         return np.array(observation)
 
     def get_result(self):
@@ -601,10 +609,10 @@ class Simulator():
         self.average_waiting_time = total_waiting/n_total if n_total>0 else 0
         self.equipped_average_waiting_time = equipped_waiting/n_equipped if n_equipped>0 else 0
         self.nonequipped_average_waiting_time = non_equipped_waiting/n_non_equipped if n_non_equipped>0 else 0
-        #print n_equipped, equipped_waiting
+
         return self.average_waiting_time,self.equipped_average_waiting_time, self.nonequipped_average_waiting_time
     def print_status(self):
-        #print self.veh_list
+
         tl = self.tl_list[self.tl_id_list[0]]
         print('current time:', self.time, ' total cars:', len(self.veh_list.keys()), 'traffic status', tl.traffic_state, 'reward:', tl.reward)
 
@@ -631,6 +639,7 @@ class Lane():
         self.detected_car_number = 0
         self.lane_reward = 0
         self.penetration_rate = penetration_rate
+        self.car_normalizing_number = self.length/6
 
     def update_lane_reward(self):
         self.lane_reward = 0
