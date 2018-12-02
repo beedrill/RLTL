@@ -80,7 +80,7 @@ class HourlyFlowManager(SimpleFlowManager):
 class Vehicle():
     max_speed = 13.9
 
-    def __init__(self, vid, simulator, equipped = True,):
+    def __init__(self, vid, simulator, equipped = True):
         self.id = vid
         self.simulator = simulator
         self.depart_time = simulator.time
@@ -327,7 +327,7 @@ class TrafficLightLuxembourg(SimpleTrafficLight):
         # Traffic State 1
         for i in range(0, n_lane):
             lane = sim.lane_list[lane_list[i]]
-            self.traffic_state[i] = sim.lane_list[lane_list[i]].detected_car_number/lane.car_normalizing_number
+            self.traffic_state[i] = lane.detected_car_number/lane.car_normalizing_number
             #temp = sim.lane_list[lane_list[i]].length
             temp = min(TRUNCATE_DISTANCE, lane.length)
 
@@ -359,8 +359,10 @@ class TrafficLightLuxembourg(SimpleTrafficLight):
             if not self.simulator.current_day_time == day_time:
                 self.simulator.current_day_time = day_time
                 print('time comes to {} o clock'.format(day_time))
-            self.traffic_state[2*n_lane+2] = day_time
-        print(self.traffic_state)
+            self.traffic_state[2*n_lane+2] = day_time/float(24)
+
+            #print(self.traffic_state)
+        #print(self.traffic_state)
 
 
 
@@ -390,7 +392,7 @@ class Simulator():
                  state_representation = 'sign',
                  flow_manager_file_prefix = 'map/whole-day-flow/traffic',
                  traffic_light_module = SimpleTrafficLight,
-                 tl_list = ['12408'],
+                 tl_list = ['26640'],
                  config_file = ''):
         self.visual = visual
         self.map_file = map_file
@@ -460,6 +462,8 @@ class Simulator():
         self._simulation_step()
         for l in self.lane_list:
             self.lane_list[l].step()
+
+        return traci.simulation.getMinExpectedNumber() == 0
 
     def _init_sumo_info(self, tl_list = []):
         cmd = ['sumo',
@@ -576,8 +580,8 @@ class Simulator():
     def _reset(self):
         if self.is_started == True:
             self.stop()
-        if self.whole_day and self.reset_to_same_time == False:
-            self.flow_manager.travel_to_random_time()
+        #if self.whole_day and self.reset_to_same_time == False:
+        #    self.flow_manager.travel_to_random_time()
         self.veh_list = {}
         self.time = 0
        #S if self.visual == False:
@@ -607,23 +611,53 @@ class Simulator():
         #print 'haha', observation
         return np.array(observation)
 
+    # def get_result(self):
+    #     average_waiting_time_list = []
+    #     equipped_average_waiting_time_list = []
+    #     nonequipped_average_waiting_time_list = []
+    #
+    #     for hour in range(0,24):
+    #         average_waiting_time,equipped_average_waiting_time,nonequipped_average_waiting_time = self.average_hourly_waiting_time(hour)
+    #         average_waiting_time_list.append(average_waiting_time)
+    #         equipped_average_waiting_time_list.append(equipped_average_waiting_time)
+    #         nonequipped_average_waiting_time_list.append(nonequipped_average_waiting_time)
+    #
+    #     average_waiting_time, equipped_average_waiting_time, nonequipped_average_waiting_time = self.average_waiting_time()
+    #     #print n_equipped, equipped_waiting
+    #     return average_waiting_time_list,equipped_average_waiting_time_list,nonequipped_average_waiting_time_list,average_waiting_time, equipped_average_waiting_time, nonequipped_average_waiting_time
     def get_result(self):
-        average_waiting_time_list = []
-        equipped_average_waiting_time_list = []
-        nonequipped_average_waiting_time_list = []
+        return self.veh_list
 
-        for hour in range(0,24):
-            average_waiting_time,equipped_average_waiting_time,nonequipped_average_waiting_time = self.average_hourly_waiting_time(hour)
-            average_waiting_time_list.append(average_waiting_time)
-            equipped_average_waiting_time_list.append(equipped_average_waiting_time)
-            nonequipped_average_waiting_time_list.append(nonequipped_average_waiting_time)
-
-        #print n_equipped, equipped_waiting
-        return average_waiting_time_list,equipped_average_waiting_time_list,nonequipped_average_waiting_time_list
     def print_status(self):
         #print self.veh_list
         tl = self.tl_list[self.tl_id_list[0]]
         print('current time:', self.time, ' total cars:', len(self.veh_list.keys()), 'traffic status', tl.traffic_state, 'reward:', tl.reward)
+
+
+    def average_waiting_time(self):
+        vlist = self.veh_list.keys()
+        n_total = 0.
+        total_waiting = 0.
+        equipped_waiting = 0.
+        non_equipped_waiting = 0.
+        n_equipped = 0.
+        n_non_equipped = 0.
+        for vid in vlist:
+            v = self.veh_list[vid]
+
+            n_total += 1
+            total_waiting += v.waiting_time
+            if v.equipped:
+                n_equipped +=1
+                equipped_waiting += v.waiting_time
+            else:
+                n_non_equipped += 1
+                non_equipped_waiting += v.waiting_time
+
+        average_waiting_time = total_waiting/n_total if n_total>0 else 0
+        equipped_average_waiting_time = equipped_waiting/n_equipped if n_equipped>0 else 0
+        nonequipped_average_waiting_time = non_equipped_waiting/n_non_equipped if n_non_equipped>0 else 0
+        return average_waiting_time, equipped_average_waiting_time, nonequipped_average_waiting_time
 
     def average_hourly_waiting_time(self,hour):
         vlist = self.timely_veh_list[hour]
@@ -652,8 +686,11 @@ class Simulator():
 
 
     def record_result(self):
-        f = open(self.record_file, 'a')
-        f.write('{}\t{}\t{}\n'.format(*(self.get_result())))
+        f = open(self.record_file, 'w')
+        vl = list(self.veh_list.values())
+        vl.sort(key=lambda x:x.depart_time)
+        for v in vl:
+            f.write('{}\t{}\t{}\t{}\n'.format(v.id, v.depart_time, v.waiting_time, v.equipped))
         f.close()
    # def _update_vehicles(self):
    #     if self.visual == False:
@@ -735,7 +772,7 @@ if __name__ == '__main__':
                     whole_day = True,
                     num_traffic_state = 27,
                     state_representation = 'original',
-                    flow_manager_file_prefix = 'map/whole-day-training-flow-LuST-12408/traffic',
+                    flow_manager_file_prefix = 'map/whole-day-training-flow-LuST-12480/traffic',
                     traffic_light_module = TrafficLightLuxembourg)
     #sim = Simulator(visual = True, episode_time=episode_time)
     # # use this commend if you don't have pysumo installed

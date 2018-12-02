@@ -302,15 +302,16 @@ class DQNAgents:
                 test_episode_steps += 1
 
             cumulative_reward += episode_reward/test_episode_steps
-            overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = env.get_result()
+            #overall_waiting_time_list,equipped_waiting_time_list,unequipped_waiting_time_list, overall_waiting_time,equipped_waiting_time,unequipped_waiting_time  = env.get_result()
+            veh_list = env.get_result()
             #cumulative_overall_waiting_time += overall_waiting_time
             #cumulative_equipped_waiting_time += equipped_waiting_time
             #cumulative_unequipped_waiting_time += unequipped_waiting_time
 
         avg_total_reward = np.sum(cumulative_reward)/num_episodes
 
-        return avg_total_reward, overall_waiting_time,equipped_waiting_time,unequipped_waiting_time
-
+        #return avg_total_reward, overall_waiting_time_list,equipped_waiting_time_list,unequipped_waiting_time_list, overall_waiting_time,equipped_waiting_time,unequipped_waiting_time
+        return avg_total_reward, veh_list
 
 class DQNAgent:
     """Class implementing DQN.
@@ -848,14 +849,17 @@ class DQNAgent:
 
             cumulative_reward += episode_reward/test_episode_steps
             overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = env.get_result()
+            #veh_list = env.get_result()
+            #for vid in veh_list.keys():
+
             print(overall_waiting_time,equipped_waiting_time,unequipped_waiting_time)
             cumulative_overall_waiting_time += overall_waiting_time
             cumulative_equipped_waiting_time += equipped_waiting_time
             cumulative_unequipped_waiting_time += unequipped_waiting_time
 
         avg_total_reward = float(cumulative_reward)/num_episodes
-        #overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = env.get_result()
-
+        overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = env.get_result()
+        #return avg_total_reward, veh_list
         return avg_total_reward, cumulative_overall_waiting_time/num_episodes,cumulative_equipped_waiting_time/num_episodes,cumulative_unequipped_waiting_time/num_episodes
 
     def hard_target_model_updates(self):

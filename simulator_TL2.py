@@ -4,15 +4,26 @@ Created on Tue Dec  5 12:22:48 2017
 
 @author: rusheng
 """
-
-import pysumo
+try:
+    import libsumo
+except ImportError:
+    print('libsumo not installed properly, please use traci only')
+# comment this line if you dont have pysumo and set visual = True, it should still run traci
+import os, sys, subprocess
+if 'SUMO_HOME' in os.environ:
+    tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
+    sys.path.append(tools)
+    #import traci
+    #f.close()
+else:
+    print('warning: no SUMO_HOME declared')
 # comment this line if you dont have pysumo and set visual = True, it should still run traci
 # Todo: another class for another kind of traffic state formation
 import traci
 from time import time
 import random
 import numpy as np
-from simulator import Simulator
+from simulator import Simulator, TrafficLightLuxembourg
 
 
 class DSRCATLAgent():
@@ -20,7 +31,7 @@ class DSRCATLAgent():
         self.gap_allowed = gap_allowed
     def fit(self, env):
         actions = [0]
-        #lane_list = {'N':'25638852#8_0', 'E':'26750073_0','S':'-26657759#0_0','W':'-26657746#4_0'} 
+        #lane_list = {'N':'25638852#8_0', 'E':'26750073_0','S':'-26657759#0_0','W':'-26657746#4_0'}
         tl_list = ['0']
         env.start()
         step = 0
@@ -44,61 +55,67 @@ class DSRCATLAgent():
                 elif tl.current_phase == 0:
                     if dNS <= self.gap_allowed and dEW >= self.gap_allowed:
                         actions = [1]
-                        
+
                 #if env.time>500:
                 #    env.record_result()
                 #    env.stop()
                 #    return
-                #print dNS, dEW, actions, tl.current_phase 
+                #print dNS, dEW, actions, tl.current_phase
             #env.print_status()
             #print env.get_result()
         env.record_result()
-                        
+
         env.stop()
-                    
+
 class NormalAgent():
-    
+
     def fit(self,env):
         step = 0
-        
+
         env.start()
         while True:
             step+=1
-            if step>6000:
+            terminal = env.step_()
+            if terminal:
                 break
-            env.step_()
-            
+
         env.record_result()
         env.stop()
-  
+
 if __name__ == '__main__':
-    
+
     #for pr in [0.01,0.2,0.4,0.6,0.8,0.99]:
-    
+
         #sim = Simulator(penetration_rate = pr)
         #sim.cmd[0] = 'sumo'
-        
+
     #sim.start()
         #agent = DSRCATLAgent()
         #agent.fit(sim)
-        
-    sim = Simulator(visual=False,penetration_rate = 0,map_file='map/5-intersections/traffic.net.xml',\
-                       route_file='map/5-intersections/traffic.rou.xml')
+
+    sim = Simulator(visual=True,
+                    num_traffic_state = 27,
+                    penetration_rate = 0,
+                    config_file = './map/LuSTScenario/scenario/due.static.sumocfg',
+                    whole_day = True,
+                    flow_manager_file_prefix='./map/whole-day-training-flow-LuST-12408/traffic',
+                    traffic_light_module = TrafficLightLuxembourg,
+                    tl_list = ['-26640'])
 
     agent = NormalAgent()
     agent.fit(sim)
-###########################for traffic light in a whole day:        
+###########################for traffic light in a whole day:
 #    sim = Simulator(visual=False,penetration_rate = 0,map_file='map/whole-day-flow/traffic.net.xml',\
 #                        route_file='map/whole-day-flow/traffic-0.rou.xml', whole_day = True)
-#    
+#
 #    sim.reset_to_same_time = True
 #    agent = NormalAgent()
 #    for t in range(0,24):
 #        sim = Simulator(visual=False,penetration_rate = 0,map_file='map/whole-day-flow/traffic.net.xml',\
 #                        route_file='map/whole-day-flow/traffic-0.rou.xml', whole_day = True)
-#    
+#
 #        sim.reset_to_same_time = True
 #        sim.flow_manager.travel_to_time(t)
-#        
+#
 #        agent.fit(sim)
         ##################################################

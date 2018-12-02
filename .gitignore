@@ -16,5 +16,7 @@ build
 # weights and logs
 DQN_log
 DQN_weights
+#record.txt
 sumolib
 traci
+record*

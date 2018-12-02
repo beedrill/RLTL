@@ -146,6 +146,7 @@ def main():
     parser.add_argument('--cpu', action='store_true', help='use CPU')
     parser.add_argument('--load', help='load model.')
     parser.add_argument('--record', action = 'store_true', help='record results when loading.')
+    parser.add_argument('--record_file', default = 'record', help = 'record file name')
     # parser.add_argument('--render', action='store_true', default=False, help='render while testing')
     parser.add_argument('--pysumo', action='store_true', help='use pysumo')
     parser.add_argument('--dir_name', default = 'TL',help = 'directory name')
@@ -154,7 +155,7 @@ def main():
     parser.add_argument('--sumo', action='store_true', help='force to use non-gui sumo')
     parser.add_argument('--whole_day', action = 'store_true', help = 'specify the time of the day when training')
     parser.add_argument('--day_time', type = int, help = 'specify day time')
-    parser.add_argument('--phase_representation', default = 'sign', help = 'specify representation')
+    parser.add_argument('--phase_representation', default = 'original', help = 'specify representation')
     parser.add_argument('--shared_model', action='store_true', help='use a common model between all agents')
     parser.add_argument('--simulator', choices=['original', 'osm'], default='original')
     parser.add_argument('--simple_inputs', action='store_true', help='use simplified inputs with fixed number of states (12)')
@@ -356,15 +357,20 @@ def main():
                 #env.flow_manager.travel_to_time(args.day_time)
                 #num_episodes = 10
                 #env.reset_to_same_time = True
-            avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = agents.evaluate(env=env, num_episodes=num_episodes)
+            #avg_reward,overall_waiting_time_list,equipped_waiting_time_list,unequipped_waiting_time_list, overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = agents.evaluate(env=env, num_episodes=num_episodes)
+            avg_reward, veh_list = agents.evaluate(env=env, num_episodes=num_episodes)
             print('Evaluation Result for average of {} episodes'.format(num_episodes))
-            print('average total reward: {} \noverall waiting time: {} \nequipped waiting time: {} \nunequipped waiting time: {}'\
-                .format(avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time))
+            #print('average total reward: {} \n hourly overall waiting time: {} \n hourly equipped waiting time: {} \n hourly unequipped waiting time: {} \n  overall waiting time: {} \n equipped waiting time: {} \n unequipped waiting time: {} \n'\
+                #.format(avg_reward,overall_waiting_time_list,equipped_waiting_time_list,unequipped_waiting_time_list, overall_waiting_time,equipped_waiting_time,unequipped_waiting_time))
 
             if args.record:
+                vlist = list(veh_list.values())
+                vlist.sort(key=lambda x:x.depart_time)
                 record_file_name = 'record.txt'
                 f = open(record_file_name,'a')
-                f.write('{}\n{}\n{}\n'.format(overall_waiting_time,equipped_waiting_time,unequipped_waiting_time))
+                for v in vlist:
+                    f.write('{}\t{}\t{}\t{}\n'.format(v.id,v.depart_time, v.waiting_time, v.equipped))
+                #f.write('{}\n{}\n{}\n{}\t{}\t{}\n'.format(overall_waiting_time_list,equipped_waiting_time_list,unequipped_waiting_time_list, overall_waiting_time,equipped_waiting_time,unequipped_waiting_time))
                 f.close()
             env.stop()
 
