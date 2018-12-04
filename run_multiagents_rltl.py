@@ -204,6 +204,11 @@ def main():
                         traffic_light_module = TrafficLightLuxembourg,
                         tl_list = ['-' + str(args.Luxembourg_intersection)])
 
+        if args.sumo:
+            print('forcely using sumo instead of sumo-gui (specify by --sumo)')
+            env.cmd[0] = 'sumo'
+            #input()
+
     elif args.simulator == 'osm':
         env = Simulator_osm(visual=visual,
                         episode_time=episode_time,
@@ -366,7 +371,7 @@ def main():
             if args.record:
                 vlist = list(veh_list.values())
                 vlist.sort(key=lambda x:x.depart_time)
-                record_file_name = 'record.txt'
+                record_file_name = args.record_file+'.txt'
                 f = open(record_file_name,'a')
                 for v in vlist:
                     f.write('{}\t{}\t{}\t{}\n'.format(v.id,v.depart_time, v.waiting_time, v.equipped))

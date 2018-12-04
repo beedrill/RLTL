@@ -501,7 +501,9 @@ class Simulator():
             return
         else:
             #traci.start(self.cmd)
-            sumoProcess = subprocess.Popen("%s %s" % ('sumo-gui', self.config_file), shell=True, stdout=sys.stdout)
+            print('starting ... ')
+
+            sumoProcess = subprocess.Popen("{} {} {}".format(self.cmd[0], self.cmd[1], self.cmd[2]), shell=True, stdout=sys.stdout)
             traci.init(port=8813, numRetries=10, host='localhost', label='default')
             return
 
@@ -515,6 +517,7 @@ class Simulator():
             return
 
     def _simulation_step(self):
+
         if self.visual == False:
             libsumo.simulationStep()
             self.time += 1
@@ -522,6 +525,7 @@ class Simulator():
         else:
             self.time += 1
             traci.simulationStep()
+            #print("time:{}".format(self.time))
             return
 
     def decode_action(self, encoded_action):
