@@ -4,6 +4,7 @@ except ImportError:
     print('libsumo not installed properly, please use traci only')
 # comment this line if you dont have pysumo and set visual = True, it should still run traci
 import os, sys
+import xml.etree.ElementTree as ET
 if 'SUMO_HOME' in os.environ:
     tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
     sys.path.append(tools)
@@ -24,6 +25,8 @@ def remove_duplicates(seq):
     seen_add = seen.add
     return [x for x in seq if not (x in seen or seen_add(x))]
 
+
+
 class SimpleFlowManager():
     def __init__(self, simulator,
                  rush_hour_file = 'map/traffic-dense.rou.xml',
@@ -38,7 +41,8 @@ class SimpleFlowManager():
     def travel_to_random_time(self):
         t = random.randint(0,23)
         self.travel_to_time(t)
-
+    def reset_flow(self):
+        print('no need to reset flow')
 
     def travel_to_time(self,t):
         route_file = self.get_carflow(t)
@@ -67,7 +71,50 @@ class SimpleFlowManager():
             return self.midnight_file
 
         print('time:', t, 'is not a supported input, put something between 0 to 24')
+class DoNothingFlowManager():
+    def __init__(self, simulatior, file_name = ''):
+        self.sim = 'nothing'
+        self.file_name = 'nothing'
+        return
+    def travel_to_random_time(self):
+        print('flow manager skip travel to random time')
+    def travel_to_time(self):
+        print('skipped travel to time')
 
+    def get_carflow(self, t):
+        print('skipped get carFlow')
+
+class RandomShiftFlowManager(DoNothingFlowManager):
+    def __init__(self, simulator, route_file_name = '', standard_file_name = '', std = 600):
+        #std is the standard deviation the depart time can be, default set as 600 (10 minutes)
+        self.sim = 'nothing'
+        self.route_file_name = route_file_name
+        self.standard_file_name = standard_file_name
+        self.std = std
+        return
+
+    def reset_flow(self, std = None):
+        print('flow manager is resetting flow')
+        std = std or self.std
+        tree = ET.parse(self.standard_file_name)
+        root = tree.getroot()
+        for child in root.findall('vehicle'):
+            dt = float(child.attrib['depart'])
+            temp = dt + random.gauss(0, std)
+            dt =  temp if temp>0 else dt
+            #dt = max(0, dt)
+            dt = int(dt)
+            #print(dt)
+            child.attrib['depart'] = str(dt)
+        sorted_list = sorted(root.findall('vehicle'), key = lambda x: float(x.attrib['depart']))
+        for c in root.findall('vehicle'):
+            root.remove(c)
+        root.extend(sorted_list)
+        for c in root.findall('vehicle'):
+            c.set('departLane','best')
+        tree.write(self.route_file_name)
+        print('done ... !')
+        return True
 class HourlyFlowManager(SimpleFlowManager):
     def __init__(self, simulator, file_name = 'map/whole-day-flow/traffic'):
         self.sim = simulator
@@ -347,9 +394,11 @@ class TrafficLightLuxembourg(SimpleTrafficLight):
         self.traffic_state[2*n_lane] = self.current_phase_time/float(self.max_time)
 
         self.traffic_state[2*n_lane+1] = self.current_phase
-
-        if self.simulator.whole_day:
+        if self.simulator.unstationary_flow:
+            self.traffic_state[2*n_lane+2] = self.simulator.time/3600/24.
+        elif self.simulator.whole_day:
             self.traffic_state[2*n_lane+2] = self.simulator.current_day_time/float(24)
+            #print(self.simulator.current_day_time)
 
         #print(self.traffic_state)
 
@@ -368,6 +417,7 @@ class Simulator():
     """
     def __init__(self, visual = False,
                  map_file = 'map/traffic.net.xml',
+                 config_file = None,
                  route_file = 'map/traffic.rou.xml',
                  end_time = 3600, episode_time = 1000,
                  additional_file = None,
@@ -379,9 +429,13 @@ class Simulator():
                  state_representation = 'sign',
                  flow_manager_file_prefix = 'map/whole-day-flow/traffic',
                  traffic_light_module = SimpleTrafficLight,
-                 tl_list = None):
+                 tl_list = None,
+                 unstationary_flow = False,
+                 standard_file_name = '',
+                 force_sumo = False):
         self.visual = visual
         self.map_file = map_file
+        self.config_file = config_file
         self.end_time = end_time
         self.route_file = route_file
         self.additional_file = additional_file
@@ -422,14 +476,29 @@ class Simulator():
                   '--end', str(self.end_time), '--random']
             if not additional_file == None:
                 self.cmd+=['--additional-files', self.additional_file]
+            if self.config_file: #config file will overwrite all the other files
+                self.cmd = ['sumo', '-c', self.config_file]
 
         else:
             self.cmd = ['sumo-gui',
                   '--net-file', self.map_file,
                   '--route-files', self.route_file,
                   '--end', str(self.end_time)]
+            if self.config_file: #config file will overwrite all the other files
+                self.cmd = ['sumo-gui', '-c', self.config_file]
+        if force_sumo:
+            print('force to use sumo to overwrite sumo-gui')
+            self.cmd[0] = 'sumo'
+        self.unstationary_flow = False
+        self.no_hard_end = False
+        if unstationary_flow:
+            self.whole_day = unstationary_flow
+            self.unstationary_flow = unstationary_flow
+            self.no_hard_end = True
+            self.standard_file_name = standard_file_name
+            self.flow_manager = RandomShiftFlowManager(self, route_file_name = self.route_file, standard_file_name = self.standard_file_name)
 
-        if whole_day:
+        elif whole_day:
             self.flow_manager = HourlyFlowManager(self, file_name=flow_manager_file_prefix)
             self.flow_manager.travel_to_random_time() #this will travel to a random current_day_time and modifie the carflow accordingly
         if not additional_file == None:
@@ -480,6 +549,7 @@ class Simulator():
             libsumo.start(self.cmd)
             return
         else:
+            print('starting ... {}'.format(self.cmd))
             traci.start(self.cmd)
             return
 
@@ -496,12 +566,23 @@ class Simulator():
         if self.visual == False:
             libsumo.simulationStep()
             self.time += 1
+            #print(self.time)
             return
         else:
             self.time += 1
             traci.simulationStep()
             return
+    def _simulation_check_end(self):
+        if self.visual == False:
 
+            terminal =  libsumo.simulation_getMinExpectedNumber() <= 0
+            if terminal == True:
+                print('simulation is ended because the Expected Number of car is 0')
+                return True
+            else:
+                return False
+        else:
+            return traci.simulation.getMinExpectedNumber() <=0
     def decode_action(self, encoded_action):
         actions = []
         for _ in range(len(self.tl_id_list)):
@@ -513,6 +594,7 @@ class Simulator():
         return actions
 
     def step(self, actions):
+
         self._simulation_step()
         for l in self.lane_list:
             self.lane_list[l].step()
@@ -535,8 +617,11 @@ class Simulator():
         #if not type( observation[0][0]) in ['int',np.float64]:
         #    print 'something wrong', observation[0][0], type(observation[0][0])
         #print reward
-
-        return observation, reward, self.time == self.episode_time, info
+        terminal = (self.time == self.episode_time)
+        if self.no_hard_end:
+            terminal = self._simulation_check_end()
+        #print(terminal)
+        return observation, reward, terminal, info
 
     def start(self):
         self._simulation_start()
@@ -557,6 +642,8 @@ class Simulator():
             self.stop()
         if self.whole_day and self.reset_to_same_time == False:
             self.flow_manager.travel_to_random_time()
+            if self.flow_manager.reset_flow:
+                self.flow_manager.reset_flow()
         self.veh_list = {}
         self.time = 0
        #S if self.visual == False:
@@ -690,34 +777,37 @@ class ActionSpaces:
 
 
 if __name__ == '__main__':
+    #
+    # num_episode = 100
+    # episode_time = 3000
+    #
+    # sim = Simulator(episode_time = episode_time,
+    #                 visual=True,
+    #                 penetration_rate = 1.,
+    #                 map_file = 'map/whole-day-training-flow-LuST-12408/traffic.net.xml',
+    #                 route_file = 'map/whole-day-training-flow-LuST-12408/traffic.rou.xml',
+    #                 whole_day = True,
+    #                 num_traffic_state = 27,
+    #                 state_representation = 'original',
+    #                 flow_manager_file_prefix = 'map/whole-day-training-flow-LuST-12408/traffic',
+    #                 traffic_light_module = TrafficLightLuxembourg)
+    # #sim = Simulator(visual = True, episode_time=episode_time)
+    # # # use this commend if you don't have pysumo installed
+    # sim.start()
+    # for _ in range(num_episode):
+    #      for i in range(episode_time):
+    #      #while True:
+    #          action = sim.action_space.sample()
+    #          next_state, reward, terminal, info = sim.step(action)
+    # #         #print reward
+    #          sim.print_status()
+    # #         #if terminal:
+    #      state = sim.reset()
+    # #         #    print state
+    # #         #    array = np.array(state, np.float32)
+    # #             #sim.print_status()
+    # #         #    break
+    # sim.stop()
 
-    num_episode = 100
-    episode_time = 3000
-
-    sim = Simulator(episode_time = episode_time,
-                    visual=True,
-                    penetration_rate = 1.,
-                    map_file = 'map/whole-day-training-flow-LuST-12408/traffic.net.xml',
-                    route_file = 'map/whole-day-training-flow-LuST-12408/traffic.rou.xml',
-                    whole_day = True,
-                    num_traffic_state = 27,
-                    state_representation = 'original',
-                    flow_manager_file_prefix = 'map/whole-day-training-flow-LuST-12408/traffic',
-                    traffic_light_module = TrafficLightLuxembourg)
-    #sim = Simulator(visual = True, episode_time=episode_time)
-    # # use this commend if you don't have pysumo installed
-    sim.start()
-    for _ in range(num_episode):
-         for i in range(episode_time):
-         #while True:
-             action = sim.action_space.sample()
-             next_state, reward, terminal, info = sim.step(action)
-    #         #print reward
-             sim.print_status()
-    #         #if terminal:
-         state = sim.reset()
-    #         #    print state
-    #         #    array = np.array(state, np.float32)
-    #             #sim.print_status()
-    #         #    break
-    sim.stop()
+    rfm = RandomShiftFlowManager(None,route_file_name = 'map/OneIntersectionLuSTScenario-12408/a.rou.xml',  standard_file_name = 'map/OneIntersectionLuSTScenario-12408/traffic-standard.rou.xml')
+    rfm.reset_flow()

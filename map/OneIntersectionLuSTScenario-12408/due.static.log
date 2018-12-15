@@ -1,0 +1,24 @@
+Loading net-file from './map/OneIntersectionLuSTScenario-12408/traffic.net.xml'... done (5ms).
+Loading done.
+Warning: Teleporting vehicle 'h32688c2:1'; waited too long (wrong lane), lane='south_in_2', time=35062.00.
+Warning: Vehicle 'h32688c2:1' ends teleporting on edge 'north_out', time 35062.00.
+Warning: Teleporting vehicle 'h23358c1:1'; waited too long (wrong lane), lane='south_in_2', time=35063.00.
+Warning: Vehicle 'h23358c1:1' ends teleporting on edge 'north_out', time 35063.00.
+Warning: Teleporting vehicle 'nrh01c1h71098c2:3'; waited too long (wrong lane), lane='north_in_0', time=71561.00.
+Warning: Vehicle 'nrh01c1h71098c2:3' ends teleporting on edge 'south_out', time 71561.00.
+Warning: Teleporting vehicle 'h63266c1:3'; waited too long (wrong lane), lane='north_in_0', time=71562.00.
+Warning: Vehicle 'h63266c1:3' ends teleporting on edge 'south_out', time 71562.00.
+Warning: Teleporting vehicle 'h51510c1:3'; waited too long (wrong lane), lane='north_in_0', time=71689.00.
+Warning: Vehicle 'h51510c1:3' ends teleporting on edge 'south_out', time 71689.00.
+Warning: Teleporting vehicle 'h47975c1:3'; waited too long (wrong lane), lane='north_in_0', time=71839.00.
+Warning: Vehicle 'h47975c1:3' ends teleporting on edge 'south_out', time 71839.00.
+Performance: 
+ Duration: 976370ms
+ Real time factor: 89.7795
+ UPS: 4460.732100
+Vehicles: 
+ Inserted: 22491 (Loaded: 22965)
+ Running: 0
+ Waiting: 0
+Teleports: 6 (Wrong Lane: 6)
+

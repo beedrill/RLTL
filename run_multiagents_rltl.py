@@ -154,7 +154,7 @@ def main():
     parser.add_argument('--sumo', action='store_true', help='force to use non-gui sumo')
     parser.add_argument('--whole_day', action = 'store_true', help = 'specify the time of the day when training')
     parser.add_argument('--day_time', type = int, help = 'specify day time')
-    parser.add_argument('--phase_representation', default = 'sign', help = 'specify representation')
+    parser.add_argument('--phase_representation', default = 'original', help = 'specify representation')
     parser.add_argument('--shared_model', action='store_true', help='use a common model between all agents')
     parser.add_argument('--simulator', choices=['original', 'osm'], default='original')
     parser.add_argument('--simple_inputs', action='store_true', help='use simplified inputs with fixed number of states (12)')
@@ -162,16 +162,17 @@ def main():
     #parser.add_argument('--route', choices=['osm_3_intersections', 'osm_13_intersections', 'manhattan_small','manhattan'], default='osm_13_intersections')
     #parser.add_argument('--aggregated_reward', action='store_true', help='choose to combine waiting times to optimize waiting time on entire network instead of individually at each TL')
     parser.add_argument('--arrival_rate', default='1', help='arrival rate of cars')
+    parser.add_argument('--unstationary_flow', action = 'store_true', help='use when the training flow is unstationary')
 
 
     args = parser.parse_args()
 
     ## PARAMS ##
 
-    num_episodes = 1500
+    num_episodes = 150
     episode_time = 3000  # must be less than 3600
     num_iterations = num_episodes * episode_time
-    memory_size = 100000
+    memory_size = 200000
     decay_steps = 100000
     target_update_freq = 3000
     lr = 0.0001
@@ -193,15 +194,21 @@ def main():
     if args.simulator == 'original':
         env = Simulator(visual=visual,
                         episode_time=episode_time,
-                        num_traffic_state = 27,
+                        num_traffic_state = 26,
                         penetration_rate = args.penetration_rate,
-                        map_file='./map/LuxembougDetailed-DUA-12408/traffic.net.xml',
-                        route_file='./map/LuxembougDetailed-DUA-12408/traffic-0.rou.xml',
+                        #config_file= './map/OneIntersectionLuSTScenario-12408/traffic.sumocfg',
+                        #standard_file_name ='./map/OneIntersectionLuSTScenario-12408/traffic-standard.rou.xml',
+                        #map_file='./map/OneIntersectionLuST-12408-stationary/14/traffic.net.xml',
+                        #route_file='./map/OneIntersectionLuST-12408-stationary/14/traffic.rou.xml',
+                        map_file='./map/LuxembougDetailed-DUE-12408/traffic.net.xml',
+                        route_file='./map/LuxembougDetailed-DUE-12408/traffic-14.rou.xml',
                         whole_day = args.whole_day,
-                        flow_manager_file_prefix='./map/LuxembougDetailed-DUA-12408/traffic',
+                        flow_manager_file_prefix='./map/LuxembougDetailed-DUE-12408/traffic',
                         state_representation = args.phase_representation,
+                        unstationary_flow = args.unstationary_flow,
                         traffic_light_module = TrafficLightLuxembourg,
-                        tl_list = ['0'])
+                        tl_list = ['0'],
+                        force_sumo = args.sumo)
     elif args.simulator == 'osm':
         env = Simulator_osm(visual=visual,
                         episode_time=episode_time,
@@ -351,10 +358,10 @@ def main():
             if not args.load:
                 print('please load a model')
                 return
-            num_episodes = 1
+            num_episodes = 5
             if args.whole_day:
                 env.flow_manager.travel_to_time(args.day_time)
-                num_episodes = 10
+                num_episodes = 5
                 env.reset_to_same_time = True
             avg_reward,overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = agents.evaluate(env=env, num_episodes=num_episodes)
             print('Evaluation Result for average of {} episodes'.format(num_episodes))
