@@ -1,0 +1,13 @@
+***Starting server on port 8813 ***
+Loading net-file from './map/OneIntersectionLuSTScenario-12408/traffic.net.xml'... done (2ms).
+Loading done.
+Simulation started with time: 0.00
+Performance: 
+ Duration: 11753ms
+ Real time factor: 167.957
+ UPS: 142.091381
+Vehicles: 
+ Inserted: 24 (Loaded: 27)
+ Running: 1
+ Waiting: 0
+

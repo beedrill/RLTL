@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2018/12/12 9:02:19 by SUMO gui Version 0.26.0
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumo-gui.exeConfiguration.xsd">
+
+    <input>
+        <net-file value="./map/OneIntersectionLuSTScenario-12408/traffic.net.xml"/>
+        <route-files value="./map/OneIntersectionLuSTScenario-12408/traffic.rou.xml"/>
+    </input>
+
+    <output>
+        <summary-output value="./map/OneIntersectionLuSTScenario-12408/due.static.summary.xml"/>
+        <tripinfo-output value="./map/OneIntersectionLuSTScenario-12408/due.static.tripinfo.xml"/>
+    </output>
+
+    <time>
+        <begin value="0"/>
+        <step-length value="1"/>
+    </time>
+
+    <processing>
+        <ignore-junction-blocker value="20"/>
+        <time-to-teleport value="600"/>
+        <max-depart-delay value="600"/>
+    </processing>
+
+    <routing>
+        <routing-algorithm value="dijkstra"/>
+    </routing>
+
+    <report>
+        <verbose value="true"/>
+        <log value="./map/OneIntersectionLuSTScenario-12408/due.static.log"/>
+    </report>
+
+    <traci_server>
+        <remote-port value="8813"/>
+    </traci_server>
+
+</configuration>
+-->
+
+<tripinfos xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/tripinfo_file.xsd">
+    <tripinfo id="randUni690:1" depart="119.00" departLane="south_in_1" departPos="4.60" departSpeed="0.00" departDelay="0.00" arrival="208.00" arrivalLane="north_out_0" arrivalPos="348.16" arrivalSpeed="1.13" duration="89.00" routeLength="854.91" waitSteps="13" timeLoss="28.32" rerouteNo="0" devices="tripinfo_randUni690:1" vType="passenger2a" vaporized=""/>
+    <tripinfo id="randUni15131:1" depart="115.00" departLane="south_in_1" departPos="4.60" departSpeed="0.00" departDelay="0.00" arrival="213.00" arrivalLane="north_out_0" arrivalPos="435.39" arrivalSpeed="0.49" duration="98.00" routeLength="942.14" waitSteps="16" timeLoss="31.09" rerouteNo="0" devices="tripinfo_randUni15131:1" vType="passenger2a" vaporized=""/>
+    <tripinfo id="randUni7144:1" depart="341.00" departLane="south_in_1" departPos="5.10" departSpeed="0.00" departDelay="0.00" arrival="386.00" arrivalLane="north_out_1" arrivalPos="22.22" arrivalSpeed="0.45" duration="45.00" routeLength="528.47" waitSteps="0" timeLoss="7.90" rerouteNo="0" devices="tripinfo_randUni7144:1" vType="passenger1" vaporized=""/>
+    <tripinfo id="randUni1024:1" depart="382.00" departLane="north_in_1" departPos="4.60" departSpeed="0.00" departDelay="0.00" arrival="436.00" arrivalLane="south_out_0" arrivalPos="122.41" arrivalSpeed="0.10" duration="54.00" routeLength="629.16" waitSteps="0" timeLoss="9.67" rerouteNo="0" devices="tripinfo_randUni1024:1" vType="passenger2b" vaporized=""/>
+    <tripinfo id="randUni14395:1" depart="386.00" departLane="east_in_0" departPos="5.10" departSpeed="0.00" departDelay="0.00" arrival="476.00" arrivalLane="west_out_0" arrivalPos="415.73" arrivalSpeed="0.09" duration="90.00" routeLength="921.98" waitSteps="10" timeLoss="24.57" rerouteNo="0" devices="tripinfo_randUni14395:1" vType="passenger1" vaporized=""/>
+    <tripinfo id="randUni3220:1" depart="437.00" departLane="south_in_0" departPos="4.60" departSpeed="0.00" departDelay="0.00" arrival="519.00" arrivalLane="east_out_0" arrivalPos="227.63" arrivalSpeed="0.71" duration="82.00" routeLength="716.68" waitSteps="17" timeLoss="31.31" rerouteNo="0" devices="tripinfo_randUni3220:1" vType="passenger2b" vaporized=""/>
+    <tripinfo id="randUni4383:1" depart="479.00" departLane="west_in_0" departPos="4.60" departSpeed="0.00" departDelay="0.00" arrival="529.00" arrivalLane="south_out_0" arrivalPos="93.10" arrivalSpeed="0.25" duration="50.00" routeLength="582.15" waitSteps="0" timeLoss="9.05" rerouteNo="0" devices="tripinfo_randUni4383:1" vType="passenger2b" vaporized=""/>
+    <tripinfo id="randUni2738:1" depart="557.00" departLane="south_in_1" departPos="7.10" departSpeed="0.00" departDelay="0.00" arrival="634.00" arrivalLane="north_out_0" arrivalPos="116.50" arrivalSpeed="0.16" duration="77.00" routeLength="620.75" waitSteps="17" timeLoss="33.25" rerouteNo="0" devices="tripinfo_randUni2738:1" vType="passenger5" vaporized=""/>
+    <tripinfo id="randUni5067:1" depart="887.00" departLane="south_in_2" departPos="4.60" departSpeed="0.00" departDelay="0.00" arrival="960.00" arrivalLane="west_out_0" arrivalPos="221.60" arrivalSpeed="0.17" duration="73.00" routeLength="718.17" waitSteps="8" timeLoss="21.64" rerouteNo="0" devices="tripinfo_randUni5067:1" vType="passenger2a" vaporized=""/>
+    <tripinfo id="randUni6078:1" depart="983.00" departLane="east_in_0" departPos="4.60" departSpeed="0.00" departDelay="0.00" arrival="1044.00" arrivalLane="west_out_0" arrivalPos="32.57" arrivalSpeed="3.39" duration="61.00" routeLength="539.32" waitSteps="11" timeLoss="22.90" rerouteNo="0" devices="tripinfo_randUni6078:1" vType="passenger2a" vaporized=""/>
+    <tripinfo id="randUni18347:1" depart="953.00" departLane="south_in_1" departPos="5.10" departSpeed="0.00" departDelay="0.00" arrival="1054.00" arrivalLane="north_out_0" arrivalPos="421.12" arrivalSpeed="2.87" duration="101.00" routeLength="927.37" waitSteps="21" timeLoss="34.97" rerouteNo="0" devices="tripinfo_randUni18347:1" vType="passenger1" vaporized=""/>
+    <tripinfo id="randUni9974:1" depart="1208.00" departLane="north_in_1" departPos="4.60" departSpeed="0.00" departDelay="0.00" arrival="1264.00" arrivalLane="south_out_1" arrivalPos="9.46" arrivalSpeed="0.13" duration="56.00" routeLength="516.21" waitSteps="8" timeLoss="19.80" rerouteNo="0" devices="tripinfo_randUni9974:1" vType="passenger2b" vaporized=""/>
+    <tripinfo id="randUni1444:1" depart="1224.00" departLane="south_in_1" departPos="4.60" departSpeed="0.00" departDelay="0.00" arrival="1291.00" arrivalLane="north_out_0" arrivalPos="290.64" arrivalSpeed="0.09" duration="67.00" routeLength="797.39" waitSteps="2" timeLoss="10.55" rerouteNo="0" devices="tripinfo_randUni1444:1" vType="passenger2a" vaporized=""/>
+    <tripinfo id="randUni16583:1" depart="1446.00" departLane="south_in_1" departPos="4.60" departSpeed="0.00" departDelay="0.00" arrival="1528.00" arrivalLane="north_out_0" arrivalPos="272.19" arrivalSpeed="0.16" duration="82.00" routeLength="778.94" waitSteps="12" timeLoss="26.86" rerouteNo="0" devices="tripinfo_randUni16583:1" vType="passenger2a" vaporized=""/>
+    <tripinfo id="randUni18570:1" depart="1464.00" departLane="east_in_2" departPos="5.10" departSpeed="0.00" departDelay="0.00" arrival="1533.00" arrivalLane="south_out_1" arrivalPos="93.34" arrivalSpeed="0.40" duration="69.00" routeLength="584.36" waitSteps="13" timeLoss="26.90" rerouteNo="0" devices="tripinfo_randUni18570:1" vType="passenger1" vaporized=""/>
+    <tripinfo id="randUni6469:1" depart="1503.00" departLane="west_in_0" departPos="5.10" departSpeed="0.00" departDelay="0.00" arrival="1563.00" arrivalLane="south_out_0" arrivalPos="237.90" arrivalSpeed="0.16" duration="60.00" routeLength="726.45" waitSteps="0" timeLoss="8.66" rerouteNo="0" devices="tripinfo_randUni6469:1" vType="passenger1" vaporized=""/>
+    <tripinfo id="randUni11061:1" depart="1485.00" departLane="south_in_1" departPos="5.60" departSpeed="0.00" departDelay="0.00" arrival="1565.00" arrivalLane="north_out_0" arrivalPos="248.47" arrivalSpeed="0.11" duration="80.00" routeLength="754.22" waitSteps="13" timeLoss="26.65" rerouteNo="0" devices="tripinfo_randUni11061:1" vType="passenger4" vaporized=""/>
+    <tripinfo id="randUni13490:1" depart="1507.00" departLane="east_in_0" departPos="5.60" departSpeed="0.00" departDelay="0.00" arrival="1580.00" arrivalLane="north_out_0" arrivalPos="207.27" arrivalSpeed="1.00" duration="73.00" routeLength="695.32" waitSteps="10" timeLoss="23.83" rerouteNo="0" devices="tripinfo_randUni13490:1" vType="passenger4" vaporized=""/>
+    <tripinfo id="randUni7290:1" depart="1570.00" departLane="north_in_2" departPos="4.60" departSpeed="0.00" departDelay="0.00" arrival="1649.00" arrivalLane="east_out_0" arrivalPos="316.65" arrivalSpeed="2.68" duration="79.00" routeLength="813.22" waitSteps="8" timeLoss="20.61" rerouteNo="0" devices="tripinfo_randUni7290:1" vType="passenger2a" vaporized=""/>
+    <tripinfo id="randUni14185:1" depart="1701.00" departLane="west_in_0" departPos="5.60" departSpeed="0.00" departDelay="0.00" arrival="1771.00" arrivalLane="south_out_0" arrivalPos="382.21" arrivalSpeed="2.98" duration="70.00" routeLength="870.26" waitSteps="0" timeLoss="8.10" rerouteNo="0" devices="tripinfo_randUni14185:1" vType="passenger4" vaporized=""/>
+    <tripinfo id="randUni14459:1" depart="1763.00" departLane="west_in_0" departPos="7.10" departSpeed="0.00" departDelay="0.00" arrival="1810.00" arrivalLane="east_out_0" arrivalPos="59.79" arrivalSpeed="1.63" duration="47.00" routeLength="564.04" waitSteps="0" timeLoss="7.26" rerouteNo="0" devices="tripinfo_randUni14459:1" vType="passenger5" vaporized=""/>
+    <tripinfo id="randUni14859:1" depart="1848.00" departLane="south_in_2" departPos="5.10" departSpeed="0.00" departDelay="0.00" arrival="1939.00" arrivalLane="west_out_0" arrivalPos="423.27" arrivalSpeed="0.25" duration="91.00" routeLength="919.34" waitSteps="10" timeLoss="25.15" rerouteNo="0" devices="tripinfo_randUni14859:1" vType="passenger1" vaporized=""/>
+    <tripinfo id="randUni18452:1" depart="1893.00" departLane="south_in_1" departPos="4.60" departSpeed="0.00" departDelay="0.00" arrival="1956.00" arrivalLane="north_out_0" arrivalPos="135.81" arrivalSpeed="0.42" duration="63.00" routeLength="642.56" waitSteps="3" timeLoss="17.68" rerouteNo="0" devices="tripinfo_randUni18452:1" vType="passenger2a" vaporized=""/>
+</tripinfos>

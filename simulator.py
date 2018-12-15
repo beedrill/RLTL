@@ -434,17 +434,18 @@ class Simulator():
             self.cmd = ['sumo',
                   '--net-file', self.map_file,
                   '--route-files', self.route_file,
-                  '--end', str(self.end_time)]
+                  '--end', str(self.end_time), '--remote-port', '8813']
             if not additional_file == None:
                 self.cmd+=['--additional-files', self.additional_file]
             if config_file:
                 self.cmd = ['sumo', '-c', config_file]
 
         else:
+            print('in test mode, bring up GUI now')
             self.cmd = ['sumo-gui',
                   '--net-file', self.map_file,
                   '--route-files', self.route_file,
-                  '--end', str(self.end_time)]
+                  '--end', str(self.end_time), '--remote-port', '8813']
             if config_file:
                 self.cmd = ['sumo-gui', '-c', config_file]
 
@@ -466,10 +467,11 @@ class Simulator():
         return traci.simulation.getMinExpectedNumber() == 0
 
     def _init_sumo_info(self, tl_list = []):
+        print('initializing SUMO information')
         cmd = ['sumo',
                   '--net-file', self.map_file,
                   '--route-files', self.route_file,
-                  '--end', str(self.end_time)]
+                  '--end', str(self.end_time), '--remote-port', '8813']
         sumoProcess = subprocess.Popen("%s %s" % ('sumo', self.config_file), shell=True, stdout=sys.stdout)
         traci.init(port=8813, numRetries=10, host='localhost', label='default')
         #time.sleep(1)

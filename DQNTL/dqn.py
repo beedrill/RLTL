@@ -296,12 +296,13 @@ class DQNAgents:
                 episode_reward += reward
 
                 # episode terminal condition
-                if terminal or (max_episode_length and test_episode_steps % max_episode_length == 0):
+                if terminal or (max_episode_length and test_episode_steps >= max_episode_length ):
+                    print('step:',test_episode_steps)
                     break
 
                 test_episode_steps += 1
 
-            cumulative_reward += episode_reward/test_episode_steps
+            #cumulative_reward += episode_reward/test_episode_steps
             #overall_waiting_time_list,equipped_waiting_time_list,unequipped_waiting_time_list, overall_waiting_time,equipped_waiting_time,unequipped_waiting_time  = env.get_result()
             veh_list = env.get_result()
             #cumulative_overall_waiting_time += overall_waiting_time

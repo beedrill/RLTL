@@ -1,4 +1,4 @@
-def parse_result(filename = "record-DUE-TL.txt"):
+def parse_result(filename = "record.txt"):
     f = open(filename, 'r')
     #f = open("record-DUA-pen02.txt", 'r')
     line  = f.readline()
@@ -38,14 +38,24 @@ def parse_result(filename = "record-DUE-TL.txt"):
         line = f.readline()
     f.close()
     try:
+        wl = None
+        wle = None
+        wlu = None
         print(n_v)
-        print([waiting_time_list[i]/n_v[i] for i in range(0,24)] )
+
+        wl = [waiting_time_list[i]/n_v[i] if n_v[i]>0 else 0 for i in range(0,24)]
+        print( wl)
         print('equipped waiting time')
-        print([waiting_time_list_equipped[i]/n_v_equipped[i] for i in range(0,24)] )
+        wle = [waiting_time_list_equipped[i]/n_v_equipped[i] if n_v[i]>0 else 0 for i in range(0,24)]
+        print( wle)
         print('unequipped waiting time')
-        print([waiting_time_list_unequipped[i]/n_v_unequipped[i] for i in range(0,24)] )
+        wlu = [waiting_time_list_unequipped[i]/n_v_unequipped[i] if n_v[i]>0 else 0 for i in range(0,24)]
+        print( wlu)
     except:
+        wl = wl or [0 for i in range(0,24)]
+        wle = wle or [0 for i in range(0,24)]
+        wlu = wlu or [0 for i in range(0,24)]
         print("exception")
-    return [waiting_time_list[i]/n_v[i] for i in range(0,24)]
+    return wl, wle, wlu
 if __name__ == '__main__':
     parse_result()

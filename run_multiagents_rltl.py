@@ -197,12 +197,12 @@ def main():
                         episode_time=episode_time,
                         num_traffic_state = 27,
                         penetration_rate = args.penetration_rate,
-                        config_file = './map/LuSTScenario/scenario/due.static.sumocfg',
+                        config_file = './map/OneIntersectionLuSTScenario-12408/traffic.sumocfg',
                         whole_day = args.whole_day,
-                        flow_manager_file_prefix='./map/whole-day-training-flow-LuST-12408/traffic',
+                        flow_manager_file_prefix='',
                         state_representation = args.phase_representation,
                         traffic_light_module = TrafficLightLuxembourg,
-                        tl_list = ['-' + str(args.Luxembourg_intersection)])
+                        tl_list = [str(args.Luxembourg_intersection)])
 
         if args.sumo:
             print('forcely using sumo instead of sumo-gui (specify by --sumo)')
@@ -363,7 +363,7 @@ def main():
                 #num_episodes = 10
                 #env.reset_to_same_time = True
             #avg_reward,overall_waiting_time_list,equipped_waiting_time_list,unequipped_waiting_time_list, overall_waiting_time,equipped_waiting_time,unequipped_waiting_time = agents.evaluate(env=env, num_episodes=num_episodes)
-            avg_reward, veh_list = agents.evaluate(env=env, num_episodes=num_episodes)
+            avg_reward, veh_list = agents.evaluate(env=env, num_episodes=num_episodes, max_episode_length=65000)
             print('Evaluation Result for average of {} episodes'.format(num_episodes))
             #print('average total reward: {} \n hourly overall waiting time: {} \n hourly equipped waiting time: {} \n hourly unequipped waiting time: {} \n  overall waiting time: {} \n equipped waiting time: {} \n unequipped waiting time: {} \n'\
                 #.format(avg_reward,overall_waiting_time_list,equipped_waiting_time_list,unequipped_waiting_time_list, overall_waiting_time,equipped_waiting_time,unequipped_waiting_time))

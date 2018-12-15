@@ -96,11 +96,11 @@ if __name__ == '__main__':
     sim = Simulator(visual=True,
                     num_traffic_state = 27,
                     penetration_rate = 0,
-                    config_file = './map/LuSTScenario/scenario/due.static.sumocfg',
+                    config_file = './map/OneIntersectionLuSTScenario-12408/traffic.sumocfg',
                     whole_day = True,
                     flow_manager_file_prefix='./map/whole-day-training-flow-LuST-12408/traffic',
                     traffic_light_module = TrafficLightLuxembourg,
-                    tl_list = ['-26640'])
+                    tl_list = ['0'])
 
     agent = NormalAgent()
     agent.fit(sim)
