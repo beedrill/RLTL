@@ -10,5 +10,5 @@ penetration_rates = [0,0.2,0.4,0.6,0.8,1]
 time = 8
 
 for n,pr in zip(names,penetration_rates):
-    os.system('python run_multiagents_rltl.py --cpu --sumo --mode test --record --load DQN_weights/luxemboug-DUE-stationary-12408-pen{}-time{}/DQN_SUMO_best_weights --penetration_rate {}'
-    .format(n,time,pr))
+    os.system('python3 run_multiagents_rltl.py --cpu --sumo --mode test --record --load DQN_weights/Luxembourg-time{}-pen{}/DQN_SUMO_best_weights --penetration_rate {}'
+    .format(time,n,pr))

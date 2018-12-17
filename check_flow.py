@@ -1,8 +1,8 @@
 import xml.etree.ElementTree as ET
 
 #filename = 'map/OneIntersectionLuST-12408-stationary/8/traffic.rou.xml'
-#filename = 'map/LuxembougDetailed-DUE-12408/traffic-14.rou.xml'
-filename = 'map/LuxembougDetailed-DUE-12408/a.rou.xml'
+#filename = 'map/LuxembougDetailed-DUE-12408/traffic-8.rou.xml'
+filename = 'map/LuxembougDetailed-DUE-12408/traffic-8.rou.xml'
 edge_interested = 'south_in'
 
 tree = ET.parse(filename)
