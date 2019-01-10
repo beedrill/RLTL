@@ -242,7 +242,8 @@ def main():
         #unstationary_flow:      args.unstationary_flow,
         #traffic_light_module:   TrafficLightLuxembourg,
         #tl_list:                ['0'],
-        'force_sumo':             args.sumo
+        'force_sumo':             args.sumo,
+        'reward_present_form':    'penalty'
     })
     ##This wrapper is used to pass the parameter into the env, the wrapper will re-init the whole\
     ## env with the new parameters, so by wrapping it and unwrap it, we get a new #!/usr/bin/env python

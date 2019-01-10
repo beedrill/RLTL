@@ -12,6 +12,7 @@ build
 
 # python
 *.pyc
+*.egg-info
 
 # weights and logs
 DQN_log
