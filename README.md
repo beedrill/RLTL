@@ -1,6 +1,16 @@
 # README
 README for Traffic Light Optimization using DQN
 
+## To cite this work:
+```
+@article{zhang2018partially,
+  title={Partially Observable Reinforcement Learning for Intelligent Transportation Systems},
+  author={Zhang, Rusheng and Ishikawa, Akihiro and Wang, Wenli and Striner, Benjamin and Tonguz, Ozan},
+  journal={arXiv preprint arXiv:1807.01628},
+  year={2018}
+}
+```
+
 ## Setup environment
 - virtualenv --system-site-packages DQN_ENV
     - need to inherit pysumo

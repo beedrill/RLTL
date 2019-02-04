@@ -32,7 +32,8 @@ class DQNAgents:
                  env_name,
                  network,
                  input_shape = (1,9),
-                 stride=0):
+                 stride=0,
+                 evaluation_interval = 5):
 
         #self.models = models
         self.preprocessor = preprocessor
@@ -56,7 +57,7 @@ class DQNAgents:
         self.episodes = 0  # index of current episodes
         self.episode_steps = 0  # current step in an episode
         #self.episode_time = episode_time # total steps per episode
-        self.evaluation_interval = 5  # interval to run evaluation and get average reward, num episodes
+        self.evaluation_interval = evaluation_interval  # interval to run evaluation and get average reward, num episodes
         self.log_interval = 100  # interval of logging data
         self.agents = agents
 
@@ -371,7 +372,8 @@ class DQNAgent:
                  name='',
                  input_shape=(1, 9),
                  index = 0,
-                 stride=0):
+                 stride=0,
+                 test_while_learn = False):
 
         self.model = model
         self.preprocessor = preprocessor
@@ -391,6 +393,7 @@ class DQNAgent:
         self.index = index
         self.input_shape = input_shape
         self.stride = stride
+        self.test_while_learn = test_while_learn
 
         # store recent states for selecting action according to the current state
         self.recent_states_map = [None] * (self.stride + 1)
@@ -483,6 +486,8 @@ class DQNAgent:
         ------
         Q-values for the state(s)
         """
+        #print('states:')
+        #print(states.shape)
         q_values = self.model.predict_on_batch(states)
         return q_values
 
@@ -507,11 +512,15 @@ class DQNAgent:
         --------
         selected action
         """
-        if mode == 'test':
+
+
+        if mode == 'test' or self.test_while_learn:
             states = list(self.recent_states_test_map[test_steps % (self.stride + 1)])
+            if self.test_while_learn:
+                states = list(self.recent_states_map[self.steps % (self.stride + 1)])
             #states = list(self.recent_states_test)
             # if not enough states, append zero
-            # note that at the begging of each episode buffer is cleared, thus no need to take care of states across episodes
+
             while len(states) < self.window_length:
                 states.insert(0, np.zeros(states[0].shape))
 
@@ -519,6 +528,7 @@ class DQNAgent:
             #print 'states:', states
             q_values = self.calc_q_values_model(np.array([states])).flatten()
             action = self.test_policy.select_action(q_values)
+
         else:
             if self.steps < self.num_burn_in:
                 action = self.uniform_policy.select_action()

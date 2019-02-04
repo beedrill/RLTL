@@ -13,6 +13,8 @@ from keras.layers import (Convolution2D, Dense, Flatten, Input, Permute)
 from keras.models import Model
 from keras.optimizers import Adam
 import keras.backend as K
+import numpy as np
+import sys
 
 from DQNTL.dqn import DQNAgent, DQNAgents
 from DQNTL.preprocessors import TLStatePreprocessor, TLMAPPreprocessor
@@ -25,7 +27,7 @@ from simulator import Simulator, TrafficLightLuxembourg, SimpleTrafficLight
 import gym
 import gym_trafficlight
 from gym_trafficlight.wrappers import  TrafficParameterSetWrapper
-from gym_trafficlight import TrafficEnv
+from gym_trafficlight import TrafficEnv, PenetrationRateManager
 #from simulator_osm import Simulator as Simulator_osm
 
 import pdb ##TODO delete after debugging
@@ -56,8 +58,27 @@ def dense_layers(permute): # TODO number of layers and units
 
     return dense1
 
+def process_observation(obs):
+    occupations, feature = obs
+    result = np.concatenate(occupations)
+    result = np.concatenate([result, np.array(feature)])
+    return result
 
 def create_model(window, input_shape, num_actions,
+                 model_name='q_network', input_type = 'simple', num_lanes = 4, num_feature = 10):
+    if input_type == 'simple':
+        return create_model_simple(window, input_shape, num_actions, model_name= model_name)
+    elif input_type == 'full':
+        feature_input_shape = input_shape
+        return create_model_full(window, input_shape, num_actions, model_name=model_name,  num_lanes = num_lanes, num_feature = num_feature)
+
+def create_model_full(window, input_shape, num_actions,
+                 model_name='q_network', num_lanes = 4, num_features = 10, lane_length = 125):
+    input = [Input(shape=lane_input_shape) for _ in range(num_lanes)]
+    input.append(Input(shape=feature_input_shape))
+
+
+def create_model_simple(window, input_shape, num_actions,
                  model_name='q_network'):
     """Create the Q-network model.
 
@@ -140,6 +161,7 @@ def get_output_folder(parent_dir, env_name):
     return parent_dir
 
 
+
 def main():
     parser = argparse.ArgumentParser(description='Run DQN on Traffic Lights')
     # parser.add_argument('--env', default='SpaceInvaders-v0', help='Atari env name')
@@ -168,7 +190,12 @@ def main():
     #parser.add_argument('--aggregated_reward', action='store_true', help='choose to combine waiting times to optimize waiting time on entire network instead of individually at each TL')
     parser.add_argument('--arrival_rate', default='1', help='arrival rate of cars')
     parser.add_argument('--unstationary_flow', action = 'store_true', help='use when the training flow is unstationary')
-
+    parser.add_argument('--dynamic_penetration', action = 'store_true', help='dynamic penetration rate')
+    parser.add_argument('--reward_type', default = 'local', help='dynamic penetration rate')
+    parser.add_argument('--evaluation_interval', default = 5, type = int, help='how many episodes per evaluation')
+    parser.add_argument('--env', default = 'TrafficLight-simple-medium-v0', help='env name')
+    parser.add_argument('--test_while_learn', action = 'store_true', help='set agent mode to test while learn, this will disable epsilon greedy')
+    parser.add_argument('--log_waiting_time', action='store_true', help='set env def logger on')
 
     args = parser.parse_args()
 
@@ -223,12 +250,13 @@ def main():
     #                     simple = args.simple_inputs,
     #                     aggregated_reward = args.aggregated_reward)
 
-    env = gym.make('TrafficLight-v0')
-    env_args = TrafficEnv.get_default_init_parameters()
-    env_args.update({
+    env = gym.make(args.env)
+    #env = gym.make('TrafficLight-Lust12408-regular-time-v0')
+    #env_args = TrafficEnv.get_default_init_parameters()
+    env_args    = {
         'visual':                 visual,
         'episode_time':           episode_time,
-        'num_traffic_state':      10,
+        #'num_traffic_state':      10,
         'penetration_rate':       args.penetration_rate,
         #config_file= './map/OneIntersectionLuSTScenario-12408/traffic.sumocfg',
         #standard_file_name ='./map/OneIntersectionLuSTScenario-12408/traffic-standard.rou.xml',
@@ -243,12 +271,48 @@ def main():
         #traffic_light_module:   TrafficLightLuxembourg,
         #tl_list:                ['0'],
         'force_sumo':             args.sumo,
-        'reward_present_form':    'penalty'
-    })
+        'reward_type':            args.reward_type,
+        'reward_present_form':    'penalty',
+        'log_waiting_time':       args.log_waiting_time
+        #'observation_processor':  process_observation
+    }
+    if args.dynamic_penetration:
+        prm = PenetrationRateManager(
+              trend = 'linear',
+              transition_time = 3*365, #3 years
+              pr_start = 0.1,
+              pr_end = 1
+              )
+        env_args['reset_manager'] = prm
+        args.test_while_learn = True ## in dynamic penetration rate, we normally want to disable epsilon greedy, so we do it in default here
+        args.evaluation_interval = sys.maxsize
+    # env_args    = {
+    #     'visual':                 visual,
+    #     'episode_time':           episode_time,
+    #     #'num_traffic_state':      10,
+    #     'penetration_rate':       args.penetration_rate,
+    #     #config_file= './map/OneIntersectionLuSTScenario-12408/traffic.sumocfg',
+    #     #standard_file_name ='./map/OneIntersectionLuSTScenario-12408/traffic-standard.rou.xml',
+    #     #map_file='./map/OneIntersectionLuST-12408-stationary/8/traffic.net.xml',
+    #     #route_file='./map/OneIntersectionLuST-12408-stationary/8/traffic.rou.xml',
+    #     #map_file='./map/LuxembougDetailed-DUE-12408/traffic.net.xml',
+    #     #route_file='./map/LuxembougDetailed-DUE-12408/traffic-8.rou.xml',
+    #     'whole_day':              args.whole_day,
+    #     #flow_manager_file_prefix:'./map/LuxembougDetailed-DUE-12408/traffic',
+    #     #state_representation:   args.phase_representation,
+    #     #unstationary_flow:      args.unstationary_flow,
+    #     #traffic_light_module:   TrafficLightLuxembourg,
+    #     #tl_list:                ['0'],
+    #     'force_sumo':             args.sumo,
+    #     'reward_type':            args.reward_type,
+    #     'reward_present_form':    'penalty',
+    #     #'observation_processor':  process_observation
+    # }
     ##This wrapper is used to pass the parameter into the env, the wrapper will re-init the whole\
     ## env with the new parameters, so by wrapping it and unwrap it, we get a new #!/usr/bin/env python
     ## This is obviously not the best way to init env, TODO: more intuitional way to init env
     env = TrafficParameterSetWrapper(env, env_args).unwrapped
+    print(env.num_traffic_state)
 
     id_list = env.tl_id_list
 
@@ -324,7 +388,8 @@ def main():
                 name=id,
                 index = index,
                 input_shape=input_shape,
-                stride=stride)
+                stride=stride,
+                test_while_learn = args.test_while_learn)
             index+=1
 
             # compile
@@ -349,7 +414,8 @@ def main():
                 network=network,
                 #name=id,
                 input_shape=input_shape,
-                stride=stride)
+                stride=stride,
+                evaluation_interval = args.evaluation_interval)
 
         if args.load:
             for agent in agents.agents:
