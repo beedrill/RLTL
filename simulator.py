@@ -398,6 +398,7 @@ class TrafficLightLuxembourg(SimpleTrafficLight):
             self.traffic_state[2*n_lane+2] = self.simulator.time/3600/24.
         elif self.simulator.whole_day:
             self.traffic_state[2*n_lane+2] = self.simulator.current_day_time/float(24)
+
             #print(self.simulator.current_day_time)
 
         #print(self.traffic_state)

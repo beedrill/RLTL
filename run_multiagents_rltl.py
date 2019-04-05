@@ -194,12 +194,13 @@ def main():
     if args.simulator == 'original':
         env = Simulator(visual=visual,
                         episode_time=episode_time,
-                        num_traffic_state = 26,
+                        num_traffic_state = 22,
+                        #num_traffic_state = 26,
                         penetration_rate = args.penetration_rate,
                         #config_file= './map/OneIntersectionLuSTScenario-12408/traffic.sumocfg',
                         #standard_file_name ='./map/OneIntersectionLuSTScenario-12408/traffic-standard.rou.xml',
-                        map_file='./map/OneIntersectionLuST-12408-stationary/8/traffic.net.xml',
-                        route_file='./map/OneIntersectionLuST-12408-stationary/8/traffic.rou.xml',
+                        map_file='./map/OneIntersectionLuST-26640-stationary/2/traffic.net.xml',
+                        route_file='./map/OneIntersectionLuST-26640-stationary/2/traffic.rou.xml',
                         #map_file='./map/LuxembougDetailed-DUE-12408/traffic.net.xml',
                         #route_file='./map/LuxembougDetailed-DUE-12408/traffic-8.rou.xml',
                         whole_day = args.whole_day,
@@ -238,7 +239,6 @@ def main():
         return
 
     network = 'DQN'
-
     # choose device
     device = '/gpu:{}'.format(args.gpu)
     if args.cpu:
@@ -260,7 +260,6 @@ def main():
 
     sess = tf.Session(config=config)
     K.set_session(sess)
-
     with tf.device(device):
         model = create_model(window=window, input_shape=input_shape, num_actions=num_actions)
         # memory
@@ -271,6 +270,7 @@ def main():
         adam = Adam(lr=lr)
         agent_list = []
         index = 0
+
         for id in id_list:
             # agent
             if not args.shared_model:
